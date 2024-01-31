@@ -23,6 +23,7 @@ def main():
         item2idx[item] = idx
 
     raw_df['cluster'] = raw_df['item'].apply(lambda x: pred[item2idx[x]])
+    raw_df[['item','cluster']].to_csv('Cluster_df.csv', index=False)
     
     x_min, x_max = min(tsne_arr[:,0]), max(tsne_arr[:,0])
     y_min, y_max = min(tsne_arr[:,1]), max(tsne_arr[:,1])
