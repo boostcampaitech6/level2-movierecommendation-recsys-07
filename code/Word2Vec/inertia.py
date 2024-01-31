@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 def main():
-    df_name = "Word2Vec_emb_df"
+    df_name = "Word2Vec_not_shuffle_emb_df"
     df = pd.read_csv(f'{df_name}.csv')
     ks = range(1,20)
     inertias = []
