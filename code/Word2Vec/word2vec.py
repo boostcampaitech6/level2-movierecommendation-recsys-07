@@ -41,7 +41,7 @@ class callback(CallbackAny2Vec):
 def main():
     shuffle = True
     print('Load df')
-    df = pd.read_csv('../data/train/train_ratings.csv')
+    df = pd.read_csv('../../data/train/train_ratings.csv')
     group_df = df.groupby('user')
 
     print('Make Sentences')
@@ -78,6 +78,7 @@ def main():
     print('Save Embedding')
     arr = np.array([model.wv[item] for item in df['item'].unique()])
     arr_df = pd.DataFrame(arr)
+    arr_df['item'] = df['item'].unique()
     if shuffle:
         arr_df.to_csv('Word2Vec_emb_df.csv', index=False)
     else:
