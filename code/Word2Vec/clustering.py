@@ -22,7 +22,7 @@ def main():
     for idx, item in enumerate(raw_df['item'].unique()):
         item2idx[item] = idx
 
-    raw_df['cluster'] = raw_df['item'].unique().apply(lambda x: pred[item2idx[x]])
+    raw_df['cluster'] = raw_df['item'].apply(lambda x: pred[item2idx[x]])
     
     x_min, x_max = min(tsne_arr[:,0]), max(tsne_arr[:,0])
     y_min, y_max = min(tsne_arr[:,1]), max(tsne_arr[:,1])
