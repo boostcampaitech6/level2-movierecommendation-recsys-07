@@ -1,9 +1,0 @@
-# ignore data folder
-/data/
-
-# ignore .pyc
-*.pyc
-
-# ignore outputs folders and ipynb
-*output/
-*.ipynb
