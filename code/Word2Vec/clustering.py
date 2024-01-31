@@ -5,8 +5,8 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
 def main():
-    n_clusters = 6
-    df_name = "Word2Vec_emb_df"
+    n_clusters = 5
+    df_name = "Word2Vec_not_shuffle_emb_df"
     df = pd.read_csv(f'{df_name}.csv')
 
     model = KMeans(n_clusters=n_clusters)
@@ -23,7 +23,7 @@ def main():
         item2idx[item] = idx
 
     raw_df['cluster'] = raw_df['item'].apply(lambda x: pred[item2idx[x]])
-    raw_df[['item','cluster']].to_csv('Cluster_df.csv', index=False)
+    raw_df.drop_duplicates('item', keep='first')[['item','cluster']].to_csv('Cluster_df.csv', index=False)
     
     x_min, x_max = min(tsne_arr[:,0]), max(tsne_arr[:,0])
     y_min, y_max = min(tsne_arr[:,1]), max(tsne_arr[:,1])
@@ -51,10 +51,10 @@ def main():
     ax1.set_title("Cluster", fontsize = 60)
     ax1.legend(fontsize = 30, markerscale = 5.0)
     
-    fig1.savefig("2d_full_tsne_cluster.png")
+    fig1.savefig("2d_full_tsne_cluster_not_shuffle.png")
     plt.close(fig1)
 
-    fig2.savefig("2d_tsne_cluster.png")
+    fig2.savefig("2d_tsne_cluster_not_shuffle.png")
     plt.close(fig2)
 
 if __name__ == '__main__':
