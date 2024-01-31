@@ -91,10 +91,12 @@ def main():
     print('TSNE')
     tsne = TSNE(n_components = 2, random_state = 42)
     tsne_arr = tsne.fit_transform(arr_df)
+    tsne_df = pd.DataFrame(tsne_arr)
+    tsne_df['item'] = df['item'].unique()
     if shuffle:
-        pd.DataFrame(tsne_arr).to_csv('TSNE_df.csv', index=False)
+        tsne_df.to_csv('TSNE_df.csv', index=False)
     else:
-        pd.DataFrame(tsne_arr).to_csv('TSNE_not_shuffle_df.csv', index=False)
+        tsne_df.to_csv('TSNE_not_shuffle_df.csv', index=False)
 
     print('Visualize')
     genre_df = pd.read_csv('../../data/train/genres.tsv', sep='\t')
