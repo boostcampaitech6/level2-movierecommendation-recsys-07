@@ -13,7 +13,6 @@ def main():
     tsne_df = pd.read_csv('TSNE_df.csv')
     tsne_arr = np.array(tsne_df)
     
-    #genre_df = pd.read_csv('../data/train/genres.tsv', sep='\t')
     year_df = pd.read_csv('../../data/train/years.tsv', sep='\t')
     year_df['decade'] = year_df['year'].apply(lambda x: (x//10)*10 if x < 2000 else (x//4)*4)
     

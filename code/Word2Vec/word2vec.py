@@ -83,10 +83,6 @@ def main():
         arr_df.to_csv('Word2Vec_emb_df.csv', index=False)
     else:
         arr_df.to_csv('Word2Vec_not_shuffle_emb_df.csv', index=False)
-    
-    item2idx = {}
-    for idx, item in enumerate(df['item'].unique()):
-        item2idx[item] = idx
 
     print('TSNE')
     tsne = TSNE(n_components = 2, random_state = 42)
@@ -99,19 +95,24 @@ def main():
         tsne_df.to_csv('TSNE_not_shuffle_df.csv', index=False)
 
     print('Visualize')
-    genre_df = pd.read_csv('../../data/train/genres.tsv', sep='\t')
+    # 시각화를 위해 indexing
+    item2idx = {}
+    for idx, item in enumerate(df['item'].unique()):
+        item2idx[item] = idx
     
     x_min, x_max = min(tsne_arr[:,0]), max(tsne_arr[:,0])
     y_min, y_max = min(tsne_arr[:,1]), max(tsne_arr[:,1])
 
-    fig1 = plt.figure(1, figsize= (12, 12))
-    fig2 = plt.figure(2, figsize= (40, 32))
+    fig1 = plt.figure(1, figsize= (12, 12)) # 한 plot에 모든 점 표현
+    fig2 = plt.figure(2, figsize= (40, 32)) # 여러 plot에 각각 점 표현
     ax1 = fig1.add_subplot(111)
     ax1.set_xlim(x_min, x_max)
     ax1.set_ylim(y_min, y_max)
     i = 0
 
+    genre_df = pd.read_csv('../../data/train/genres.tsv', sep='\t')
     colors = plt.cm.jet(np.linspace(0,1,genre_df['genre'].nunique()))
+    
     for genre, g_df in genre_df.groupby('genre'):
         i+=1
         item_list = g_df['item'].tolist()
