@@ -68,11 +68,11 @@ def main() -> Union[Word2Vec, str, np.ndarray, bool]:
         seed=42,
         epochs=50,
         min_count=1,
-        vector_size=150,
+        vector_size=500,
         sg=1,
         negative=15,
         ns_exponent=0.75,
-        window=50,
+        window=30,
         hs=0,
         sample=0.00001,
         compute_loss=True,
@@ -120,11 +120,12 @@ def tsne(
     """
     output: (tsne_arr: tsne로 2차원으로 축소한 array, item_uniq: item 목록, shuffle: sequence의 셔플 여부)\n
     emb_df를 읽고 TSNE를 이용해 2차원으로 차원 축소 후 df로 저장.\n
+    emb_df의 마지막 column은 'item'이라 가정함.\n
     2차원으로 축소된 np.ndarray 반환\n
     """
     print("TSNE")
     tsne = TSNE(n_components=2, random_state=42)
-    tsne_arr = tsne.fit_transform(emb_df)
+    tsne_arr = tsne.fit_transform(emb_df.iloc[:, :-1])
     tsne_df = pd.DataFrame(tsne_arr)
     tsne_df["item"] = item_uniq
     tsne_df.to_csv(f"{tsne_df_name}.csv", index=False)
