@@ -73,10 +73,10 @@ def clustering(
     ax1.set_title("Cluster", fontsize=60)
     ax1.legend(fontsize=30, markerscale=5.0)
 
-    fig1.savefig(f"2d_full_tsne_{png_name}.png")
+    fig1.savefig(f"plot/2d_full_tsne_{png_name}.png")
     plt.close(fig1)
 
-    fig2.savefig(f"2d_tsne_{png_name}.png")
+    fig2.savefig(f"plot/2d_tsne_{png_name}.png")
     plt.close(fig2)
 
 

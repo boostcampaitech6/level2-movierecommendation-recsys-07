@@ -31,7 +31,7 @@ def inertia(df_name: str) -> None:
     plt.xlabel("number of clusters, k")
     plt.ylabel("inertia")
     plt.xticks(ks)
-    plt.savefig(f"{df_name}_Intertias.png")
+    plt.savefig(f"plot/{df_name}_Intertias.png")
 
 
 if __name__ == "__main__":

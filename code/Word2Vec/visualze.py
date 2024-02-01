@@ -56,10 +56,10 @@ def visualize(tsne_df_name: str) -> None:
     ax1.set_title("Decade", fontsize=60)
     ax1.legend(fontsize=30, markerscale=5.0)
 
-    fig1.savefig("2d_full_tsne_decade.png")
+    fig1.savefig("plot/2d_full_tsne_decade.png")
     plt.close(fig1)
 
-    fig2.savefig("2d_tsne_decade.png")
+    fig2.savefig("plot/2d_tsne_decade.png")
     plt.close(fig2)
 
 

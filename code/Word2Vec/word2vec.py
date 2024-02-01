@@ -183,16 +183,16 @@ def visualize(
     ax1.legend()
 
     if shuffle:
-        fig1.savefig("2d_full_tsne_genre.png")
+        fig1.savefig("plot/2d_full_tsne_genre.png")
         plt.close(fig1)
 
-        fig2.savefig("2d_tsne_genre.png")
+        fig2.savefig("plot/2d_tsne_genre.png")
         plt.close(fig2)
     else:
-        fig1.savefig("2d_full_tsne_genre_not_shuffle.png")
+        fig1.savefig("plot/2d_full_tsne_genre_not_shuffle.png")
         plt.close(fig1)
 
-        fig2.savefig("2d_tsne_genre_not_shuffle.png")
+        fig2.savefig("plot/2d_tsne_genre_not_shuffle.png")
         plt.close(fig2)
 
 
