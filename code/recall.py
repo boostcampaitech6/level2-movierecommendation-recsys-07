@@ -3,7 +3,7 @@ from tqdm import tqdm
 import argparse
 
 
-def recall_at_10(submission_df, valid_df):
+def recall_at_10(submission_df: pd.DataFrame, valid_df: pd.DataFrame):
     sum_recall = 0
     true_users = 0
 
