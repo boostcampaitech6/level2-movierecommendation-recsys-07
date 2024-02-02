@@ -35,7 +35,7 @@ def main(args):
     output_file_name = f"{args.model}_submission.csv"
     write_path = os.path.join(args.output_dir, output_file_name)
     os.makedirs(name=args.output_dir, exist_ok=True)
-    sub_df.to_csv(write_path)
+    sub_df.to_csv(write_path, index=False)
 
 
 if __name__ == "__main__":
