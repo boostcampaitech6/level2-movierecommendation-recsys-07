@@ -7,7 +7,7 @@ def recall_at_10(submission_df: pd.DataFrame, valid_df: pd.DataFrame):
     sum_recall = 0
     true_users = 0
 
-    for user in tqdm(submission_df["user"].unique()):
+    for user in tqdm(submission_df["user"].unique(), desc="recall@10"):
         pred_set = set(submission_df[submission_df["user"] == user]["item"])
         assert len(pred_set) == 10, f"Length of Prediction is not 10 for user {user}"
         valid_set = set(valid_df[valid_df["user"] == user]["item"])
