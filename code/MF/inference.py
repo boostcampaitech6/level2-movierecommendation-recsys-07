@@ -37,6 +37,8 @@ def main(args):
     os.makedirs(name=args.output_dir, exist_ok=True)
     sub_df.to_csv(write_path, index=False)
 
+    logger.info(f"Save Submission as {write_path}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
