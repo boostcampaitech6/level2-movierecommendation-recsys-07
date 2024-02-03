@@ -32,3 +32,18 @@ class MF(nn.Module):
         item_x = self.item_embedding(iid)
         dot = (user_x * item_x).sum(dim=1)
         return self.mu + dot + self.b_u[uid] + self.b_i[iid]
+
+
+class LMF(MF):
+    def __init__(self, args):
+        super().__init__(args)
+
+    def forward(self, x):
+        uid = x[:, 0]
+        iid = x[:, 1]
+
+        user_x = self.user_embedding(uid)
+        item_x = self.item_embedding(iid)
+        dot = (user_x * item_x).sum(dim=1)
+        logit = self.mu + dot + self.b_u[uid] + self.b_i[iid]
+        return torch.exp(logit) / (1 + torch.exp(logit))

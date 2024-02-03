@@ -13,7 +13,7 @@ import torch.nn as nn
 import wandb
 from tqdm import tqdm
 
-from model import MF
+from model import MF, LMF
 
 from utils import get_logger, logging_conf
 from optimizer import get_optimizer
@@ -30,6 +30,7 @@ def get_model(args) -> nn.Module:
         model_name = args.model.lower()
         model = {
             "mf": MF,
+            "lmf": LMF,
         }.get(
             model_name
         )(args)
