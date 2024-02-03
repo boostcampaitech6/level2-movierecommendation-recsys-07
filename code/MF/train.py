@@ -3,6 +3,7 @@ import argparse
 
 import torch
 from utils import get_logger, set_seeds, logging_conf
+from datetime import datetime
 import wandb
 
 from loader import MFDataset, get_loader
@@ -30,6 +31,13 @@ def main(args):
     train_loader, valid_loader = get_loader(args, train_dataset, valid_dataset)
 
     wandb.init(project=f"{args.model}".lower(), config=args)
+
+    args.model_dir = os.path.join(
+        args.model_dir,
+        args.model.name.lower(),
+        datetime.utcfromtimestamp(wandb.run.start_time).strftime("%Y-%m-%d_%H:%M:%S")
+        + wandb.run.name,
+    )
 
     logger.info("Building Model ...")
     model = get_model(args).to(args.device)
