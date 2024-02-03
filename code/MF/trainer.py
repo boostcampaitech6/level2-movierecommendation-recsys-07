@@ -75,7 +75,7 @@ def run(
         recommend_df = recommend(model, seen, args)
         recall = recall_at_10(recommend_df, valid_df)
 
-        logger.info("Training epoch: %s Recall@10: %.4f", epoch + 1, recall)
+        logger.info("Training epoch: %s / Recall@10: %.4f", epoch + 1, recall)
 
         wandb.log(
             dict(
