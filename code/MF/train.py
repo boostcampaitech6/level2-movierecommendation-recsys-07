@@ -18,6 +18,13 @@ def main(args):
     set_seeds(args.seed)
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    args.model_dir = os.path.join(
+        args.model_dir,
+        args.model.lower(),
+        datetime.utcfromtimestamp(wandb.run.start_time).strftime("%Y-%m-%d_%H:%M:%S")
+        + wandb.run.name,
+    )
+
     logger.info("Preparing data ...")
     train_dataset = MFDataset(args)
     _, idx_dict, seen = train_dataset.load_data(args, train=True, idx_dict=None)
@@ -31,13 +38,6 @@ def main(args):
     train_loader, valid_loader = get_loader(args, train_dataset, valid_dataset)
 
     wandb.init(project=f"{args.model}".lower(), config=args)
-
-    args.model_dir = os.path.join(
-        args.model_dir,
-        args.model.lower(),
-        datetime.utcfromtimestamp(wandb.run.start_time).strftime("%Y-%m-%d_%H:%M:%S")
-        + wandb.run.name,
-    )
 
     logger.info("Building Model ...")
     model = get_model(args).to(args.device)
