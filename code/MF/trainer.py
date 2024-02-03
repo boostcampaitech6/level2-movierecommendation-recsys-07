@@ -142,7 +142,12 @@ def train(
         optimizer.zero_grad()
 
         if step % args.log_steps == 0:
-            logger.info("Training steps: %s Loss: %.4f", step, loss.item())
+            logger.info(
+                "Training steps: %s / %s, Loss: %.4f",
+                step,
+                len(train_loader),
+                loss.item(),
+            )
 
         total_preds.append(preds.detach())
         total_targets.append(targets.detach())
