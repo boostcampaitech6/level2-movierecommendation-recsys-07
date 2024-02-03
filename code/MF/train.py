@@ -18,6 +18,8 @@ def main(args):
     set_seeds(args.seed)
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    wandb.init(project=f"{args.model}".lower(), config=args)
+
     args.model_dir = os.path.join(
         args.model_dir,
         args.model.lower(),
@@ -36,8 +38,6 @@ def main(args):
     )  # recall 측정 위해 valid_df 저장.
 
     train_loader, valid_loader = get_loader(args, train_dataset, valid_dataset)
-
-    wandb.init(project=f"{args.model}".lower(), config=args)
 
     logger.info("Building Model ...")
     model = get_model(args).to(args.device)

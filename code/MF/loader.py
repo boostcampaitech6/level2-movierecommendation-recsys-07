@@ -43,6 +43,7 @@ class MFDataset(torch.utils.data.Dataset):
 
             # save idx
             dict_path = os.path.join(args.model_dir, "idx.pickle")
+            os.makedirs(args.model_dir, exist_ok=True)
             with open(dict_path, "wb") as pk:
                 pickle.dump(idx, pk)
         else:
