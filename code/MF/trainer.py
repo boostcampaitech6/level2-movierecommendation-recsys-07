@@ -6,12 +6,10 @@ from recall import recall_at_10
 
 import pandas as pd
 import numpy as np
-import heapq
 import torch
 import torch.nn as nn
 
 import wandb
-from tqdm import tqdm
 
 from model import MF, LMF
 
@@ -128,9 +126,7 @@ def train(
     total_targets = []
     losses = []
 
-    for step, batch in tqdm(
-        enumerate(train_loader), total=len(train_loader), desc="Train"
-    ):
+    for step, batch in enumerate(train_loader):
         if args.model.lower() in ["mf", "lmf"]:
             batch = batch.to(args.device)
             input = batch[:, :-1]
@@ -144,6 +140,9 @@ def train(
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
+
+        if step % args.log_steps == 0:
+            logger.info("Training steps: %s Loss: %.4f", step, loss.item())
 
         total_preds.append(preds.detach())
         total_targets.append(targets.detach())
@@ -196,7 +195,7 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
     """recommend top 10 item for each user"""
     if args.model.lower() in ["mf", "lmf"]:
         rec = torch.tensor([]).to(args.device)
-        for user in tqdm(range(args.n_users), desc="recommendation"):
+        for user in range(args.n_users):
             mask = torch.zeros(args.n_items).to(args.device)
             for idx in seen[user]:
                 mask[idx] -= 999
@@ -207,14 +206,6 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
 
             _, item = torch.topk(pred, 10)
             rec = torch.concat((rec, item))
-            """heap = [(-v, i) for i, v in enumerate(pred)]
-            heapq.heapify(heap)
-            cnt = 0
-            while cnt < 10:
-                idx = heapq.heappop(heap)[1]
-                if not idx in user_seen:
-                    rec.append(idx)
-                    cnt += 1"""
         user_arr = np.arange(args.n_users).repeat(10)
 
         df = pd.DataFrame(zip(user_arr, rec.tolist()), columns=["user", "item"])
