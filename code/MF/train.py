@@ -78,6 +78,7 @@ if __name__ == "__main__":
         type=str,
         help="valid file name",
     )
+    parser.add_argument("--log_steps", default=50, type=int)
 
     parser.add_argument("--num_workers", default=4, type=int, help="number of workers")
 
