@@ -25,8 +25,8 @@ class MF(nn.Module):
         self.b_i = nn.Parameter(torch.zeros(self.item_dims))
 
     def forward(self, x):
-        uid = x[:, 0].to(torch.int64)
-        iid = x[:, 1].to(torch.int64)
+        uid = x[:, 0]
+        iid = x[:, 1]
 
         user_x = self.user_embedding(uid)
         item_x = self.item_embedding(iid)

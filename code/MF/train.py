@@ -34,7 +34,7 @@ def main(args):
 
     args.model_dir = os.path.join(
         args.model_dir,
-        args.model.name.lower(),
+        args.model.lower(),
         datetime.utcfromtimestamp(wandb.run.start_time).strftime("%Y-%m-%d_%H:%M:%S")
         + wandb.run.name,
     )
