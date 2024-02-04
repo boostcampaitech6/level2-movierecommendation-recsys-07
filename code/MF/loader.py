@@ -13,6 +13,7 @@ class MFDataset(torch.utils.data.Dataset):
     def __init__(self, args):
         self.data = None
         self.args = args
+        self.values = None
 
     def load_data(
         self,
@@ -57,7 +58,7 @@ class MFDataset(torch.utils.data.Dataset):
             args.n_items = self.data["item"].nunique()
             args.n_rows = len(self.data)
 
-            seen = self.data.groupby("user")["item"].apply(list)
+            seen = self.data.groupby("user")["item"].apply(np.array)
         else:
             seen = None
 
@@ -82,8 +83,10 @@ class MFDataset(torch.utils.data.Dataset):
 
         self.data = df
 
+        self.values = self.data.values
+
     def __getitem__(self, index: int) -> np.ndarray:
-        row = self.data.iloc[index].values
+        row = self.values[index]
         return row
 
     def __len__(self) -> int:

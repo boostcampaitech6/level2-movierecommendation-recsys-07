@@ -72,7 +72,9 @@ def run(
             valid_loader=valid_loader, model=model, args=args
         )"""
 
+        logger.info("Recommending ...")
         recommend_df = recommend(model, seen, args)
+        logger.info("Calculating Recall@10 ...")
         recall = recall_at_10(recommend_df, valid_df)
 
         logger.info("Training epoch: %s / Recall@10: %.4f", epoch + 1, recall)
@@ -201,13 +203,11 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
     if args.model.lower() in ["mf", "lmf"]:
         rec = torch.tensor([]).to(args.device)
         for user in range(args.n_users):
-            mask = torch.zeros(args.n_items).to(args.device)
-            for idx in seen[user]:
-                mask[idx] -= 999
             user_tensor = torch.tensor(user).repeat(args.n_items).reshape(-1, 1)
             item_tensor = torch.arange(args.n_items).reshape(-1, 1)
             input = torch.concat((user_tensor, item_tensor), dim=1).to(args.device)
-            pred = model(input) + mask
+            pred = model(input)
+            pred[seen[user]] = -999  # masking
 
             _, item = torch.topk(pred, 10)
             rec = torch.concat((rec, item))
