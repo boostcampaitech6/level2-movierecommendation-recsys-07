@@ -67,13 +67,14 @@ class MFDataset(torch.utils.data.Dataset):
     def negative_sampling(self, args, n_neg: int):
         df = self.data
         item_set = set(df["item"].unique())
-        neg_item = np.array([], dtype=int)
+        neg_item = np.zeros((args.n_users, n_neg), dtype=int)
         for user, u_items in tqdm(df.groupby("user")["item"]):
             u_set = set(u_items)
             user_neg_item = np.random.choice(
                 list(item_set - u_set), n_neg, replace=False
             )
-            neg_item = np.concatenate([neg_item, user_neg_item])
+            neg_item[user] = user_neg_item
+        neg_item = np.concatenate(neg_item)
 
         users = df["user"].unique().repeat(n_neg)
         neg_df = pd.DataFrame(zip(users, neg_item), columns=["user", "item"])
