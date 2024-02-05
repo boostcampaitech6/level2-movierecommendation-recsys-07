@@ -1,0 +1,21 @@
+program: train.py
+project: movie_rec_mf_sweep
+method: grid
+metric:
+  goal: maximize
+  name: best_recall
+parameters:
+  lr:
+    values: [1.0e-3, 1.0e-4, 1.0e-5]
+  batch_size:
+    values: [512, 1024, 2048, 4096, 8192]
+  loss_function:
+    values: ["roc_star", "bce"]
+  weight_decay:
+    values: [1.0e-2, 1.0e-3, 1.0e-4]
+  n_epochs:
+    values: [200]
+  n_neg:
+    values: [50, 100, 200]
+  hidden_dim:
+    values: [4, 16, 64, 256]
