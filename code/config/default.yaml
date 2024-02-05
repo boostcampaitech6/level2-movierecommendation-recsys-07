@@ -1,0 +1,29 @@
+# basic configuration
+seed: 42
+device: "cuda"
+data_dir: "../data/train/"
+train_file_name: "custom_train_ratings.csv"
+valid_file_name: "custom_valid_ratings.csv"
+model_dir: "models/"
+model_file_name: "best_model.pt"
+output_dir: "outputs/"
+
+# train configuration
+log_steps: 50
+num_workers: 4
+n_epochs: 200
+batch_size: 4096
+lr: 1.0e-3
+patience: 30
+weight_decay: 1.0e-4
+
+gamma: 0.3
+
+# 
+defaults:
+  - _self_
+  - dataloader: default
+  - model:  mf
+  - loss_function: bce
+  - optimizer: adamw
+  - scheduler: plateau
