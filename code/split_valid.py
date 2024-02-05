@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
+import math
 
 
 def main():
-    np.random.seed(42)
+    np.random.seed(21)
 
     print("Load data")
     df = pd.read_csv("../data/train/train_ratings.csv")
@@ -12,10 +13,19 @@ def main():
     group = df.groupby("user", group_keys=False)
     sampled_group = group.apply(
         lambda data: data.take(
-            np.random.permutation(len(data))[: int(len(data) * 0.01)]
+            np.random.permutation(len(data))[: int(math.log(len(data), 4))]
         )
     )
-    idx = sampled_group.index
+    idx1 = sampled_group.index
+
+    group = df.groupby("item", group_keys=False)
+    sampled_group = group.apply(
+        lambda data: data.take(
+            np.random.permutation(len(data))[: int(math.log(len(data), 1.2))]
+        )
+    )
+    idx2 = sampled_group.index
+    idx = idx1.append(idx2).unique()
     idx = idx.sort_values()
 
     print("Split")
