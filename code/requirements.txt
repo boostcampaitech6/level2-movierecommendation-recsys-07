@@ -11,3 +11,4 @@ matplotlib
 gensim
 scikit-learn
 wandb
+hydra-core
