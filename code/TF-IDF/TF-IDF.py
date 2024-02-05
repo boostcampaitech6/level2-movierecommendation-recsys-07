@@ -164,7 +164,7 @@ all_smallest_columns = smallest_columns_per_row.sum()
 test_df["item"] = all_smallest_columns
 test_df.to_csv("output/tf_df_eu.csv", index=False)
 
-# 각 행에서 가장 작은 값 10개가 위치한 열의 이름을 저장
+# 각 행에서 가장 큰 값 10개가 위치한 열의 이름을 저장
 largest_columns_per_row = co_matrix.apply(
     lambda row: row.nlargest(10).index.tolist(), axis=1
 )
