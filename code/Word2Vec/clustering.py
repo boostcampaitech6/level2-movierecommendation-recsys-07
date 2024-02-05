@@ -21,13 +21,13 @@ def clustering(
     각 item이 어느 cluster에 속하는지 {output_df_name}.csv에 저장.
     2차원 TSNE 결과를 plot으로 표현하되, cluster를 기준으로 분리하여 표현.
     """
-    df = pd.read_csv(f"{emb_df_name}.csv")
+    df = pd.read_csv(f"{emb_df_name}.csv").iloc[:, :-1]
 
     model = KMeans(n_clusters=n_clusters)
     model.fit(df)
     pred = model.predict(df)  # n_items 길이의 cluster array. [3, 1, 1, 2, ...]
 
-    tsne_df = pd.read_csv(f"{tsne_df_name}.csv")
+    tsne_df = pd.read_csv(f"{tsne_df_name}.csv").iloc[:, :-1]
     tsne_arr = np.array(tsne_df)
 
     raw_df = pd.read_csv("../../data/train/train_ratings.csv")
@@ -64,7 +64,7 @@ def clustering(
             label=f"{cluster}",
             color=colors[i - 1],
         )
-        ax = fig2.add_subplot(4, 5, i)
+        ax = fig2.add_subplot(5, 5, i)
         ax.scatter(tsne_arr[idx_list, 0], tsne_arr[idx_list, 1], s=10)
         ax.set_title(f"{cluster}", fontsize=40)
         ax.set_xlim(x_min, x_max)
@@ -82,9 +82,9 @@ def clustering(
 
 if __name__ == "__main__":
     clustering(
-        "Word2Vec_not_shuffle_emb_df",
-        "TSNE_not_shuffle_df",
-        "Cluster_df",
-        "cluster_not_shuffle",
-        4,
+        "new_Word2Vec_not_shuffle_emb_df",
+        "new_TSNE_not_shuffle_df",
+        "new_Cluster_df",
+        "new_cluster_not_shuffle",
+        21,
     )

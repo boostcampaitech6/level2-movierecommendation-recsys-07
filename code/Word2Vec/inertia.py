@@ -15,7 +15,7 @@ def inertia(df_name: str) -> None:
     KMeans clustering을 할 때 적절한 k값을 찾기 위함.
     결과 그래프에서 급격히 꺾이며 완만해지는 구간이 적절한 k.
     """
-    df = pd.read_csv(f"{df_name}.csv")
+    df = pd.read_csv(f"{df_name}.csv").iloc[:, :-1]
     ks = range(1, 30)
     inertias = []
 
@@ -35,4 +35,4 @@ def inertia(df_name: str) -> None:
 
 
 if __name__ == "__main__":
-    inertia("Word2Vec_not_shuffle_emb_df")
+    inertia("new_Word2Vec_not_shuffle_emb_df")
