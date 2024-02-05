@@ -35,7 +35,7 @@ def main(args):
 
     logger.info("TSNE ...")
     item_uniq = idx_dict["idx2item"].values()
-    tsne_arr, _, _ = tsne(emb_df, f"{args.model}_tsne_df.csv", item_uniq)
+    tsne_arr, _, _ = tsne(emb_df, f"{args.model}_tsne_df", item_uniq)
 
     logger.info("Visualize ...")
     visualize(tsne_arr, item_uniq)
