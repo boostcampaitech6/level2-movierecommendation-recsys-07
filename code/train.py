@@ -87,7 +87,7 @@ if __name__ == "__main__":
         "--hidden_dim", default=64, type=int, help="hidden dimension size"
     )
     parser.add_argument(
-        "--n_neg", default=400, type=float, help="the number of negative sample"
+        "--n_neg", default=400, type=int, help="the number of negative sample"
     )
 
     # 훈련
