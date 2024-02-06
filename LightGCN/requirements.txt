@@ -1,0 +1,6 @@
+pandas
+scikit-learn
+wandb
+torch==1.12.1
+torch_geometric
+hydra-core

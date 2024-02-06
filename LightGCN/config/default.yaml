@@ -1,0 +1,21 @@
+# General settings
+seed: 42
+use_cuda_if_available: False
+
+
+# Directory paths
+data_dir: "../data/train/"
+output_dir: "./outputs/"
+
+# Model configuration
+hidden_dim: 64
+n_layers: 3
+alpha: null
+
+# Training parameters
+n_epochs: 150
+lr: 0.1
+
+# Model saving options
+model_dir: "./models/"
+model_name: "best_model.pt"
