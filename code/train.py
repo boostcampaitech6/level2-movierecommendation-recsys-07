@@ -26,6 +26,7 @@ def main(args: DictConfig):
     wandb.init(
         project=args.model.name,
         config=OmegaConf.to_container(args, resolve=True, throw_on_missing=True),
+        entity="buzzer_beater",
     )
 
     # set directory to save a model

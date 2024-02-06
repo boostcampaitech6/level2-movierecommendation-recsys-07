@@ -1,1 +1,3 @@
 name: plateau
+patience: 10
+factor: 0.5
