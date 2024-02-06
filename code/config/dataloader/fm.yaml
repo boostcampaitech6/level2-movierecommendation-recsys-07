@@ -1,0 +1,3 @@
+name: fm
+n_neg: 400
+feature: ["genres", "directors"]

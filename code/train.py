@@ -7,7 +7,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 from library.utils import get_logger, set_seeds, logging_conf
-from library.loader import MFDataset, get_loader
+from library.loader import MFDataset, get_loader, FMDataset
 from library.trainer import get_model, run
 
 
@@ -39,9 +39,15 @@ def main(args: DictConfig):
     )
 
     logger.info("Preparing data ...")
-    train_dataset = MFDataset(args)
-    _, idx_dict, seen = train_dataset.load_data(args, train=True, idx_dict=None)
-    train_dataset.negative_sampling(args, n_neg=args.dataloader.n_neg)
+    if args.model.name.lower() in ["mf", "lmf"]:
+        train_dataset = MFDataset(args)
+        _, idx_dict, seen = train_dataset.load_data(args, train=True, idx_dict=None)
+        train_dataset.negative_sampling(args, n_neg=args.dataloader.n_neg)
+    elif args.model.name.lower() in ["fm"]:
+        train_dataset = FMDataset(args)
+        _, idx_dict, seen = train_dataset.load_data(args, train=True, idx_dict=None)
+        train_dataset.negative_sampling(args, n_neg=args.dataloader.n_neg)
+        train_dataset.load_side_information(idx_dict, args)
 
     valid_dataset = MFDataset(args)
     valid_df, _, _ = valid_dataset.load_data(args, train=False, idx_dict=idx_dict)

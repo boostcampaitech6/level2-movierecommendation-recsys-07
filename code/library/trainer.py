@@ -6,8 +6,9 @@ import torch
 import torch.nn as nn
 from sklearn.metrics import accuracy_score, roc_auc_score
 import wandb
+from tqdm import tqdm
 
-from .model import MF, LMF
+from .model import MF, LMF, FM
 from .utils import get_logger, logging_conf
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
@@ -24,6 +25,7 @@ def get_model(args) -> nn.Module:
         model = {
             "mf": MF,
             "lmf": LMF,
+            "fm": FM,
         }.get(
             model_name
         )(args)
@@ -123,6 +125,7 @@ def train(
         if args.model.name.lower() in [
             "mf",
             "lmf",
+            "fm",
         ]:  # To do change this -> loader-model interaction
             batch = batch.to(args.device)
             input = batch[:, :-1]
@@ -165,9 +168,9 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
     """recommend top 10 item for each user"""
     if args.model.name.lower() in ["mf", "lmf"]:
         rec = torch.tensor([]).to(args.device)
-        for user in range(args.n_users):
+        item_tensor = torch.arange(args.n_items).reshape(-1, 1)
+        for user in tqdm(range(args.n_users)):
             user_tensor = torch.tensor(user).repeat(args.n_items).reshape(-1, 1)
-            item_tensor = torch.arange(args.n_items).reshape(-1, 1)
             input = torch.concat((user_tensor, item_tensor), dim=1).to(args.device)
             pred = model(input)
             pred[seen[user]] = -999  # masking
@@ -178,7 +181,24 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
 
         df = pd.DataFrame(zip(user_arr, rec.tolist()), columns=["user", "item"])
         return df
+    elif args.model.name.lower() in ["fm"]:
+        rec = torch.tensor([]).to(args.device)
+        item_tensor = torch.arange(args.n_items).reshape(-1, 1)
+        feat_tensor = torch.tensor(args.item2feat).reshape(-1, len(args.feat_dim))
+        for user in tqdm(range(args.n_users)):
+            user_tensor = torch.tensor(user).repeat(args.n_items).reshape(-1, 1)
+            input = torch.concat((user_tensor, item_tensor, feat_tensor), dim=1).to(
+                args.device
+            )
+            pred = model(input)
+            pred[seen[user]] = -999  # masking
 
+            _, item = torch.topk(pred, 10)
+            rec = torch.concat((rec, item))
+        user_arr = np.arange(args.n_users).repeat(10)
+
+        df = pd.DataFrame(zip(user_arr, rec.tolist()), columns=["user", "item"])
+        return df
     else:
         raise NotImplementedError(f"Not implemented for model {args.model.name}")
 
