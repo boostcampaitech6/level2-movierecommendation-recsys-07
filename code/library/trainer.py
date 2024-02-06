@@ -1,29 +1,26 @@
 import os
 
-from recall import recall_at_10
-
 import pandas as pd
 import numpy as np
 import torch
 import torch.nn as nn
-
+from sklearn.metrics import accuracy_score, roc_auc_score
 import wandb
 
-from model import MF, LMF
+from .model import MF, LMF
+from .utils import get_logger, logging_conf
+from .optimizer import get_optimizer
+from .scheduler import get_scheduler
+from .criterion import get_criterion
+from .recall import recall_at_10
 
-from utils import get_logger, logging_conf
-from optimizer import get_optimizer
-from scheduler import get_scheduler
-from criterion import get_criterion
-
-from sklearn.metrics import accuracy_score, roc_auc_score
 
 logger = get_logger(logger_conf=logging_conf)
 
 
 def get_model(args) -> nn.Module:
     try:
-        model_name = args.model.lower()
+        model_name = args.model.name.lower()
         model = {
             "mf": MF,
             "lmf": LMF,
@@ -87,7 +84,7 @@ def run(
             best_recall = recall
             # nn.DataParallel로 감싸진 경우 원래의 model을 가져옵니다.
             model_to_save = model.module if hasattr(model, "module") else model
-            model_filename = f"{args.model}_{args.model_name}"
+            model_filename = f"{args.model.name}_{args.model_file_name}"
             save_checkpoint(
                 state={"epoch": epoch + 1, "state_dict": model_to_save.state_dict()},
                 model_dir=args.model_dir,
@@ -123,7 +120,10 @@ def train(
     loss_cnt = 0
 
     for step, batch in enumerate(train_loader):
-        if args.model.lower() in ["mf", "lmf"]:
+        if args.model.name.lower() in [
+            "mf",
+            "lmf",
+        ]:  # To do change this -> loader-model interaction
             batch = batch.to(args.device)
             input = batch[:, :-1]
             preds = model(input)
@@ -163,7 +163,7 @@ def train(
 
 def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
     """recommend top 10 item for each user"""
-    if args.model.lower() in ["mf", "lmf"]:
+    if args.model.name.lower() in ["mf", "lmf"]:
         rec = torch.tensor([]).to(args.device)
         for user in range(args.n_users):
             user_tensor = torch.tensor(user).repeat(args.n_items).reshape(-1, 1)
@@ -180,7 +180,7 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
         return df
 
     else:
-        raise NotImplementedError(f"Not implemented for model {args.model}")
+        raise NotImplementedError(f"Not implemented for model {args.model.name}")
 
 
 def save_checkpoint(state: dict, model_dir: str, model_filename: str) -> None:
@@ -192,8 +192,8 @@ def save_checkpoint(state: dict, model_dir: str, model_filename: str) -> None:
 
 
 def load_model(args):
-    model_name = f"{args.model}_{args.model_name}"
-    model_path = os.path.join(args.model_dir, model_name)
+    model_file_name = f"{args.model.name}_{args.model_file_name}"
+    model_path = os.path.join(args.model_dir, model_file_name)
     logger.info("Loading Model from: %s", model_path)
     load_state = torch.load(model_path)
     model = get_model(args)

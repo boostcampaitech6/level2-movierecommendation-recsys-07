@@ -1,11 +1,10 @@
 import os
+import pickle
 from typing import Tuple, Optional
 
 import numpy as np
 import pandas as pd
 import torch
-import pickle
-
 from tqdm import tqdm
 
 
