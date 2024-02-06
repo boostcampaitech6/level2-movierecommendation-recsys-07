@@ -29,11 +29,11 @@ def main(args):
     emb_df["item"] = emb_df.iloc[:, 0].map(idx_dict["idx2item"])
     emb_df = emb_df.iloc[:, 1:]
     emb_df.columns.astype(str)
-    emb_df.to_csv(f"{args.model}_emb.csv", index=False)
+    emb_df.to_csv(f"{args.model.name}_emb.csv", index=False)
 
     logger.info("TSNE ...")
     item_uniq = idx_dict["idx2item"].values()
-    tsne_arr, _, _ = tsne(emb_df, f"{args.model}_tsne_df", item_uniq)
+    tsne_arr, _, _ = tsne(emb_df, f"{args.model.name}_tsne_df", item_uniq)
 
     logger.info("Visualize ...")
     visualize(tsne_arr, item_uniq)

@@ -11,19 +11,15 @@ output_dir: "outputs/"
 # train configuration
 log_steps: 50
 num_workers: 4
-n_epochs: 200
+n_epochs: 20
 batch_size: 4096
-lr: 1.0e-3
-patience: 30
-weight_decay: 1.0e-4
+patience: 1
 
-gamma: 0.3
-
-# 
+# select components
 defaults:
   - _self_
   - dataloader: default
-  - model:  mf
+  - model: mf
   - loss_function: bce
   - optimizer: adamw
   - scheduler: plateau

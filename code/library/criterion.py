@@ -2,13 +2,13 @@ import torch
 
 
 def get_criterion(pred: torch.Tensor, target: torch.Tensor, args):
-    if args.loss_function.lower() == "bce":
+    if args.loss_function.name.lower() == "bce":
         loss = torch.nn.BCEWithLogitsLoss(reduction="none")
         loss = loss(pred, target)
         loss = torch.mean(loss)
-    elif args.loss_function.lower() == "roc_star":
+    elif args.loss_function.name.lower() == "roc_star":
         loss = roc_star_paper(pred, target, args)
-    elif args.loss_function.lower() == "bpr":
+    elif args.loss_function.name.lower() == "bpr":
         loss = BPR(pred, target, args)
     else:
         raise NotImplementedError(
@@ -42,7 +42,7 @@ def roc_star_paper(y_pred: torch.Tensor, _y_true: torch.Tensor, args):
     pos_expand = pos.view(-1, 1).expand(-1, ln_neg).reshape(-1)
     neg_expand = neg.repeat(ln_pos)
 
-    diff = -(pos_expand - neg_expand - args.gamma)
+    diff = -(pos_expand - neg_expand - args.loss_function.gamma)
     diff = diff[diff > 0]
 
     loss = torch.sum(diff * diff)
