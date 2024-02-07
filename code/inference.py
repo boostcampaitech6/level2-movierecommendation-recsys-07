@@ -22,6 +22,8 @@ def main(args):
     os.makedirs(args.model_dir, exist_ok=True)
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
+    args.train_file_name = "train_ratings.csv"
+
     logger.info("Preparing data ...")
     # load idx
     dict_path = os.path.join(args.model_dir, "idx.pickle")
