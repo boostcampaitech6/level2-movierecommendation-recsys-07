@@ -217,6 +217,6 @@ def load_model(args):
     model = get_model(args)
 
     # load model state
-    model.load_state_dict(load_state["state_dict"], strict=True)
+    model.load_state_dict(load_state["state_dict"], strict=False)
     logger.info("Successfully loaded model state from: %s", model_path)
     return model

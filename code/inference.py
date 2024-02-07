@@ -34,7 +34,7 @@ def main(args):
     elif args.model.name.lower() in ["fm"]:
         train_dataset = FMDataset(args)
         _, _, seen = train_dataset.load_data(args, train=True, idx_dict=idx_dict)
-        train_dataset.load_side_information(args, train=False, idx_dict=idx_dict)
+        train_dataset.load_side_information(args, train=True, idx_dict=idx_dict)
 
     logger.info("Loading Model ...")
     model: torch.nn.Module = trainer.load_model(args=args).to(args.device)
