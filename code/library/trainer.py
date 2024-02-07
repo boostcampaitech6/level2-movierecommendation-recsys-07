@@ -180,19 +180,34 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
         df = pd.DataFrame(zip(user_arr, rec.tolist()), columns=["user", "item"])
         return df
     elif args.model.name.lower() in ["fm"]:
-        rec = torch.tensor([]).to(args.device)
-        item_tensor = torch.arange(args.n_items).reshape(-1, 1)
-        feat_tensor = torch.tensor(args.item2feat).reshape(-1, len(args.feat_dim))
-        for user in tqdm(range(args.n_users)):
-            user_tensor = torch.tensor(user).repeat(args.n_items).reshape(-1, 1)
-            input = torch.concat((user_tensor, item_tensor, feat_tensor), dim=1).to(
-                args.device
-            )
-            pred = model(input)
-            pred[seen[user]] = -999  # masking
+        rec = torch.zeros(10 * args.n_users).to(args.device)
+        user_repeat = np.arange(args.n_users).repeat(args.n_items)
+        user_tensor = torch.tensor(user_repeat).reshape(-1, 1)
+        item_tensor = torch.arange(args.n_items).reshape(-1, 1).repeat(args.n_users, 1)
+        feat_tensor = (
+            torch.tensor(args.item2feat)
+            .reshape(-1, len(args.feat_dim))
+            .repeat(args.n_users, 1)
+        )
 
-            _, item = torch.topk(pred, 10)
-            rec = torch.concat((rec, item))
+        full_tensor = torch.concat((user_tensor, item_tensor, feat_tensor), dim=1).to(
+            args.device
+        )
+        # n_users가 div의 배수라는 전제가 필요함.
+        # div가 작을수록 추천 속도 빨라지지만 OOM의 위험이 커짐.
+        div = 1120
+        for batch in tqdm(range(div)):
+            offset_size = args.n_items * (args.n_users // div)
+            offset = batch * offset_size
+            input = full_tensor[offset : offset + offset_size, :]
+            pred = model(input).reshape(-1, args.n_items)
+            for idx, user in enumerate(
+                range(batch * len(pred), (batch + 1) * len(pred))
+            ):
+                pred[idx, seen[user]] = -999  # masking
+
+                _, item = torch.topk(pred[idx], 10)
+                rec[user * 10 : user * 10 + 10] = item
         user_arr = np.arange(args.n_users).repeat(10)
 
         df = pd.DataFrame(zip(user_arr, rec.tolist()), columns=["user", "item"])
