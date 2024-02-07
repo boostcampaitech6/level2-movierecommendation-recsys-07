@@ -23,7 +23,7 @@ def main(args: DictConfig):
     train_data, n_node, id2index = prepare_dataset(
         device=device, data_dir=args.data_dir
     )
-
+    index2id = {v: k for k, v in id2index.items()}
     logger.info("Loading Model ...")
     weight: str = os.path.join(args.model_dir, args.model_name)
     model: torch.nn.Module = trainer.build(
@@ -36,7 +36,7 @@ def main(args: DictConfig):
     model = model.to(device)
 
     logger.info("Make Predictions & Save Submission ...")
-    trainer.inference(model=model, data=train_data, output_dir=args.output_dir, id2index=id2index)
+    trainer.inference(model=model, data=train_data, output_dir=args.output_dir, index2id=index2id)
 
 
 if __name__ == "__main__":

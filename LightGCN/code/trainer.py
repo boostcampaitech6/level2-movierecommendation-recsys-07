@@ -125,7 +125,7 @@ def train(
     index2id: dict,
     args,
 ):
-    
+
     pred = model(train_data["edge"])
 
     loss = model.link_pred_loss(pred=pred, edge_label=train_data["label"])
@@ -163,60 +163,90 @@ def validate(
         prob = model.predict_link(edge_index=valid_data["edge"], prob=True)
         prob = prob.detach().cpu().numpy()
 
-        user_list = sorted(train_item_dict.keys())
-        topk = np.zeros(shape=313600)
-        n = 0
-        breakpoint()
-        for i in user_list:
-            no_seen = list(set(list(range(31361, 38168))) - train_item_dict[i])
-            topk[n * 10 : n * 10 + 10] = model.recommend(
-                edge_index=train_data["edge"],
-                src_index=torch.LongTensor(i),
-                dst_index=torch.LongTensor(no_seen),
-                k=10,
-            )
-            n += 1
+        # user_list = sorted(train_item_dict.keys())
+        user_indices = torch.LongTensor(list(range(1, 31361)))
+        all_items = torch.LongTensor(list(range(31361, 38168)))
+        topk_list = model.recommend(
+            edge_index=train_data["edge"],
+            src_index=user_indices,
+            dst_index=all_items,
+            k=600,
+        )
 
-        topk = topk.detach().cpu().numpy()
+        topk = topk_list.detach().cpu().numpy()
+
+        # breakpoint()
+
+        # 미리 할당된 배열 생성
+        final_topk = np.zeros((len(user_indices), 10), dtype=int)
+        for i, user_index in tqdm(enumerate(user_indices)):
+            # user_id = index2id.get(user_index.item())
+            seen_items = train_item_dict[user_index.item()]
+            seen_items.add(0)
+            
+            recommendations = [item for item in topk[i] if item not in seen_items]
+            final_topk[i, : len(recommendations[:10])] = recommendations[:10]
+
         avg_recall, avg_nor_recall = calculate_normalized_recall_at_k(
-            topk=topk, k=10, args=args, index2id=index2id
+            topk=final_topk, k=10, args=args, index2id=index2id
         )
         label = valid_data["label"]
 
         acc = accuracy_score(y_true=label, y_pred=prob > 0.5)
         auc = roc_auc_score(y_true=label, y_score=prob)
     logger.info(
-        "VALID AUC : %.4f ACC : %.4f normalized Recall@K : %.4f",
+        "VALID AUC : %.4f ACC : %.4f Recall@K : %.4f normalized Recall@K : %.4f",
         auc,
         acc,
+        avg_recall,
         avg_nor_recall,
     )
     return auc, acc, avg_nor_recall
 
 
-def inference(model: nn.Module, data: dict, output_dir: str, id2index):
+def inference(model: nn.Module, data: dict, output_dir: str, index2id):
     model.eval()
     with torch.no_grad():
-        pred = model.recommend(
+        user_tensor = data["edge"][:, data["label"] == 1][0, :]
+        item_tensor = data["edge"][:, data["label"] == 1][1, :]
+        train_item_dict = create_user_item_interaction_dict(
+            user_tensor, item_tensor, index2id=index2id
+        )
+        user_indices = torch.LongTensor(list(range(1, 31361)))
+        all_items = torch.LongTensor(list(range(31361, 38168)))
+        topk_list = model.recommend(
             edge_index=data["edge"],
-            src_index=torch.LongTensor(list(range(1, 31361))),
-            dst_index=torch.LongTensor(list(range(31361, 38168))),
-            k=10,
+            src_index=user_indices,
+            dst_index=all_items,
+            k=600,
         )
 
+        topk = topk_list.detach().cpu().numpy()
+
+        final_topk = np.zeros((len(user_indices), 10), dtype=int)
+        for i, user_index in tqdm(enumerate(user_indices)):
+            # user_id = index2id.get(user_index.item())
+            seen_items = train_item_dict[user_index.item()]
+            # unkwon item 
+            seen_items.add(0)
+
+            recommendations = [item for item in topk[i] if item not in seen_items]
+            final_topk[i, : len(recommendations[:10])] = recommendations[:10]
+
     logger.info("Saving Result ...")
-    pred = pred.detach().cpu().numpy()
+    # pred = pred.detach().cpu().numpy()
     os.makedirs(name=output_dir, exist_ok=True)
     write_path = os.path.join(output_dir, "submission.csv")
 
     # id2index 딕셔너리의 역매핑 생성
-    index2id = {v: k for k, v in id2index.items()}
+    #index2id = {v: k for k, v in id2index.items()}
 
     sb_df = pd.read_csv(
-        "/data/ephemeral/level2-movierecommendation-recsys-07/input/data/eval/sample_submission.csv"
+        "/data/ephemeral/level2-movierecommendation-recsys-07/data/eval/sample_submission.csv"
     )
     # 1차원 array 변환
-    flat_pred = np.array(pred).flatten()
+    flat_pred = np.array(final_topk).flatten()
+    #breakpoint()
     id_list = [int(index2id.get(index)) - 200000 for index in flat_pred]
     sb_df["item"] = id_list
     sb_df.to_csv(path_or_buf=write_path, index=False)
