@@ -55,7 +55,6 @@ def main(args: DictConfig):
 
         valid_dataset = FMDataset(args)
         valid_df, _, _ = valid_dataset.load_data(args, train=False, idx_dict=idx_dict)
-        valid_dataset.load_side_information(args, train=False, idx_dict=idx_dict)
 
     train_loader = torch.utils.data.DataLoader(
         train_dataset,

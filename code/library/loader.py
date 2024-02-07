@@ -180,7 +180,7 @@ class FMDataset(torch.utils.data.Dataset):
     def load_side_information(self, args, train: bool, idx_dict: dict):
         side_df = pd.DataFrame()
         args.feat_dim = []
-        for feature in tqdm(args.dataloader.feature):
+        for feature in args.dataloader.feature:
             file_path = os.path.join(self.args.data_dir, f"{feature}.tsv")
             feature_df = pd.read_csv(file_path, sep="\t")
 
