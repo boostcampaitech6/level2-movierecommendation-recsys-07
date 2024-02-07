@@ -129,6 +129,7 @@ def train(
             input = batch[:, :-1]
             preds = model(input)
             targets = batch[:, -1]
+            del batch
         else:
             raise NotImplementedError
 
@@ -148,6 +149,8 @@ def train(
 
         total_preds.append(preds.detach())
         total_targets.append(targets.detach())
+        del preds
+        del targets
         losses += loss.item()
         loss_cnt += 1
 
@@ -162,6 +165,7 @@ def train(
     return auc, acc, loss_avg
 
 
+@torch.no_grad()
 def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
     """recommend top 10 item for each user"""
     if args.model.name.lower() in ["mf", "lmf"]:
@@ -190,24 +194,28 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
             .repeat(args.n_users, 1)
         )
 
-        full_tensor = torch.concat((user_tensor, item_tensor, feat_tensor), dim=1).to(
-            args.device
-        )
+        full_tensor = torch.concat((user_tensor, item_tensor, feat_tensor), dim=1)
         # n_users가 div의 배수라는 전제가 필요함.
         # div가 작을수록 추천 속도 빨라지지만 OOM의 위험이 커짐.
-        div = 1120
+        div = args.div
+        user_len = seen.apply(len)
         for batch in tqdm(range(div)):
             offset_size = args.n_items * (args.n_users // div)
             offset = batch * offset_size
-            input = full_tensor[offset : offset + offset_size, :]
+            input = full_tensor[offset : offset + offset_size, :].to(args.device)
             pred = model(input).reshape(-1, args.n_items)
-            for idx, user in enumerate(
-                range(batch * len(pred), (batch + 1) * len(pred))
-            ):
-                pred[idx, seen[user]] = -999  # masking
+            del input
 
-                _, item = torch.topk(pred[idx], 10)
-                rec[user * 10 : user * 10 + 10] = item
+            user_left, user_right = batch * len(pred), (batch + 1) * len(pred)
+
+            seen_item = np.concatenate(seen[user_left:user_right].values)
+            seen_user = np.arange(user_left, user_right).repeat(
+                user_len[user_left:user_right].values
+            )
+
+            pred[seen_user - user_left, seen_item] = -999
+            _, item = torch.topk(pred, 10)
+            rec[user_left * 10 : user_right * 10] = item.reshape(-1)
         user_arr = np.arange(args.n_users).repeat(10)
 
         df = pd.DataFrame(zip(user_arr, rec.tolist()), columns=["user", "item"])
