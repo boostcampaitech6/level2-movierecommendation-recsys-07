@@ -7,7 +7,7 @@ import pickle
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from library.loader import MFDataset
+from library.loader import MFDataset, FMDataset
 import library.trainer as trainer
 from library.utils import get_logger, logging_conf
 
@@ -28,8 +28,13 @@ def main(args):
         idx_dict = pickle.load(pk)
 
     # get seen data for recommendation
-    train_dataset = MFDataset(args)
-    _, _, seen = train_dataset.load_data(args, train=True, idx_dict=idx_dict)
+    if args.model.name.lower() in ["mf", "lmf"]:
+        train_dataset = MFDataset(args)
+        _, _, seen = train_dataset.load_data(args, train=True, idx_dict=idx_dict)
+    elif args.model.name.lower() in ["fm"]:
+        train_dataset = FMDataset(args)
+        _, _, seen = train_dataset.load_data(args, train=True, idx_dict=idx_dict)
+        train_dataset.load_side_information(args, train=False, idx_dict=idx_dict)
 
     logger.info("Loading Model ...")
     model: torch.nn.Module = trainer.load_model(args=args).to(args.device)

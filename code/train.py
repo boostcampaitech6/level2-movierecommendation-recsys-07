@@ -7,7 +7,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 
 from library.utils import get_logger, set_seeds, logging_conf
-from library.loader import MFDataset, get_loader, FMDataset
+from library.loader import MFDataset, FMDataset
 from library.trainer import get_model, run
 
 
@@ -43,22 +43,32 @@ def main(args: DictConfig):
         train_dataset = MFDataset(args)
         _, idx_dict, seen = train_dataset.load_data(args, train=True, idx_dict=None)
         train_dataset.negative_sampling(args, n_neg=args.dataloader.n_neg)
+
+        valid_dataset = MFDataset(args)
+        valid_df, _, _ = valid_dataset.load_data(args, train=False, idx_dict=idx_dict)
+
     elif args.model.name.lower() in ["fm"]:
         train_dataset = FMDataset(args)
         _, idx_dict, seen = train_dataset.load_data(args, train=True, idx_dict=None)
         train_dataset.negative_sampling(args, n_neg=args.dataloader.n_neg)
-        train_dataset.load_side_information(idx_dict, args)
+        train_dataset.load_side_information(args, train=True, idx_dict=idx_dict)
 
-    valid_dataset = MFDataset(args)
-    valid_df, _, _ = valid_dataset.load_data(args, train=False, idx_dict=idx_dict)
+        valid_dataset = FMDataset(args)
+        valid_df, _, _ = valid_dataset.load_data(args, train=False, idx_dict=idx_dict)
+        valid_dataset.load_side_information(args, train=False, idx_dict=idx_dict)
 
-    train_loader, valid_loader = get_loader(args, train_dataset, valid_dataset)
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset,
+        num_workers=args.num_workers,
+        shuffle=True,
+        batch_size=args.batch_size,
+    )
 
     logger.info("Building Model ...")
     model = get_model(args).to(args.device)
 
     logger.info("Start Training ...")
-    run(args, model, train_loader, valid_loader, idx_dict, seen, valid_df)
+    run(args, model, train_loader, seen, valid_df)
 
     logger.info("Saving configuration")
     OmegaConf.save(config=args, f=os.path.join(args.model_dir, "default.yaml"))

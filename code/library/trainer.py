@@ -41,8 +41,6 @@ def run(
     args,
     model: nn.Module,
     train_loader: torch.utils.data.DataLoader,
-    valid_loader: torch.utils.data.DataLoader,
-    idx_dict: dict,
     seen: pd.Series,
     valid_df: pd.DataFrame,
 ):

@@ -93,20 +93,6 @@ class MFDataset(torch.utils.data.Dataset):
         return len(self.data)
 
 
-def get_loader(args, trainset, validset) -> Tuple[torch.utils.data.DataLoader]:
-    train_loader = torch.utils.data.DataLoader(
-        trainset, num_workers=args.num_workers, shuffle=True, batch_size=args.batch_size
-    )
-    valid_loader = torch.utils.data.DataLoader(
-        validset,
-        num_workers=args.num_workers,
-        shuffle=False,
-        batch_size=args.batch_size,
-    )
-
-    return train_loader, valid_loader
-
-
 class FMDataset(torch.utils.data.Dataset):
     def __init__(self, args):
         self.data = None
@@ -191,7 +177,7 @@ class FMDataset(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return len(self.data)
 
-    def load_side_information(self, idx_dict, args):
+    def load_side_information(self, args, train: bool, idx_dict: dict):
         side_df = pd.DataFrame()
         args.feat_dim = []
         for feature in tqdm(args.dataloader.feature):
@@ -202,20 +188,28 @@ class FMDataset(torch.utils.data.Dataset):
             if feature in ["directors", "genres", "titles", "writers", "years"]:
                 feature = feature[:-1]
 
-            # None 값을 위한 zero padding.
-            feat2idx = {v: i + 1 for i, v in enumerate(feature_df[feature].unique())}
-            feat2idx["None"] = 0
-            idx2feat = {i + 1: v for i, v in enumerate(feature_df[feature].unique())}
-            idx2feat[0] = "None"
-            args.feat_dim.append(len(feat2idx))
+            if train:
+                # None 값을 위한 zero padding.
+                feat2idx = {
+                    v: i + 1 for i, v in enumerate(feature_df[feature].unique())
+                }
+                feat2idx["None"] = 0
+                idx2feat = {
+                    i + 1: v for i, v in enumerate(feature_df[feature].unique())
+                }
+                idx2feat[0] = "None"
+                args.feat_dim.append(len(feat2idx))
 
-            idx_dict[f"{feature}2idx"] = feat2idx
-            idx_dict[f"idx2{feature}"] = idx2feat
+                idx_dict[f"{feature}2idx"] = feat2idx
+                idx_dict[f"idx2{feature}"] = idx2feat
 
-            # save idx
-            dict_path = os.path.join(args.model_dir, "idx.pickle")
-            with open(dict_path, "wb") as pk:
-                pickle.dump(idx_dict, pk)
+                # save idx
+                dict_path = os.path.join(args.model_dir, "idx.pickle")
+                with open(dict_path, "wb") as pk:
+                    pickle.dump(idx_dict, pk)
+            else:
+                # 이미 완성된 idx dict를 입력받음.
+                pass
 
             # item: 0 / genre: 2^1 + 2^3 + 2^7
             # feature의 0은 None 값을 위한 padding
