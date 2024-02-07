@@ -8,14 +8,12 @@
    ```
 1. Training
    ```
-   python train.py --[args] [value]
+   python train.py [args]=[value]
    ```
 2. Inference
    ```
-   python inference.py --[args] [value]
+   python inference.py -cp [saved_model_dir]
    ```
-
-+ #### 두 파일의 모델, 경로 관련 args는 동일해야합니다. (train_file_name 제외)
 
 ## Recall@10
 ```
