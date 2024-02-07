@@ -158,3 +158,12 @@ class FM(nn.Module):
         """
         mask = 2 ** torch.arange(bits - 1, -1, -1).to(x.device, x.dtype)
         return x.unsqueeze(-1).bitwise_and(mask).ne(0).float().squeeze()
+
+
+class LFM(FM):
+    def __init__(self, args):
+        super().__init__(args)
+
+    def forward(self, x):
+        logit = super().forward(x)
+        return torch.exp(logit) / (1 + torch.exp(logit))
