@@ -53,7 +53,7 @@ def run(
     early_stopping_counter = 0
 
     for epoch in range(args.n_epochs):
-        logger.info("Start Training: Epoch %s", epoch + 1)
+        logger.info("Start Training: Epoch %s", epoch)
 
         # Train
         train_auc, train_acc, train_loss = train(
