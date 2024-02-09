@@ -63,7 +63,10 @@ class FM(nn.Module):
         self.first_user_emb = nn.Embedding(args.n_users, 1)
         self.first_item_emb = nn.Embedding(args.n_items, 1)
         self.first_feat_emb = nn.ModuleList(
-            [nn.Linear(self.feat_dim[i], 1) for i in range(len(self.feat_dim))]
+            [
+                nn.Linear(self.feat_dim[i], 1, bias=False)
+                for i in range(len(self.feat_dim))
+            ]
         )
 
         # second order interaction embedding
@@ -71,7 +74,7 @@ class FM(nn.Module):
         self.second_item_emb = nn.Embedding(args.n_items, args.model.hidden_dim)
         self.second_feat_emb = nn.ModuleList(
             [
-                nn.Linear(self.feat_dim[i], args.model.hidden_dim)
+                nn.Linear(self.feat_dim[i], args.model.hidden_dim, bias=False)
                 for i in range(len(self.feat_dim))
             ]
         )
@@ -84,7 +87,6 @@ class FM(nn.Module):
             torch.nn.init.xavier_uniform_(module.weight)
         elif isinstance(module, nn.Linear):
             torch.nn.init.xavier_uniform_(module.weight)
-            module.bias.data.fill_(0)
 
     def forward(self, x):
         # user와 item은 이진수 표현이 아님.
@@ -92,14 +94,9 @@ class FM(nn.Module):
         item_x = self.first_item_emb(x[:, 1])
 
         # 나머지 feature는 이진수 표현.
-        # multi-hot encoding 후 normalize. 하나의 feature에 여러 embedding이 합쳐져 커지는 것을 방지하기 위함.
         feat_x = torch.concat(
             [
-                nn.functional.normalize(
-                    self.first_feat_emb[i](
-                        self.binary(x[:, i + 2], self.args.feat_dim[i])
-                    )
-                )
+                self.first_feat_emb[i](self.binary(x[:, i + 2], self.feat_dim[i]))
                 for i in range(len(self.feat_dim))
             ],
             dim=1,
@@ -123,10 +120,8 @@ class FM(nn.Module):
         item_x2 = self.second_item_emb(x[:, 1]).unsqueeze(1)
         feat_x2 = torch.concat(
             [
-                nn.functional.normalize(
-                    self.second_feat_emb[i](
-                        self.binary(x[:, i + 2], self.args.feat_dim[i])
-                    )
+                self.second_feat_emb[i](
+                    self.binary(x[:, i + 2], self.feat_dim[i])
                 ).unsqueeze(1)
                 for i in range(len(self.feat_dim))
             ],
@@ -155,9 +150,12 @@ class FM(nn.Module):
         이진수 x를 bits 차원으로 multi-hot encoding하는 함수.
         binary(torch.tensor([[9],[7]]), 5)
         = torch.tensor([[1., 0., 0., 1., 0.], [1., 1., 1., 0., 0.]])
+        위 결과가 out이고, average를 위해 sum으로 나눠줌.
         """
         mask = 2 ** torch.arange(bits - 1, -1, -1).to(x.device, x.dtype)
-        return x.unsqueeze(-1).bitwise_and(mask).ne(0).float().squeeze()
+        out = x.unsqueeze(-1).bitwise_and(mask).ne(0).float().squeeze()
+        sum_out = torch.sum(out, dim=1, keepdim=True)
+        return out / sum_out
 
 
 class LFM(FM):

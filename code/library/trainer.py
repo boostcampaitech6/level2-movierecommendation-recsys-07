@@ -190,11 +190,7 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
         user_repeat = np.arange(args.n_users).repeat(args.n_items)
         user_tensor = torch.tensor(user_repeat).reshape(-1, 1)
         item_tensor = torch.arange(args.n_items).reshape(-1, 1).repeat(args.n_users, 1)
-        feat_tensor = (
-            torch.tensor(args.item2feat)
-            .reshape(-1, len(args.feat_dim))
-            .repeat(args.n_users, 1)
-        )
+        feat_tensor = torch.tensor(args.item2feat).T.repeat(args.n_users, 1)
 
         full_tensor = torch.concat((user_tensor, item_tensor, feat_tensor), dim=1)
         # n_users가 div의 배수라는 전제가 필요함.

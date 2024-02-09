@@ -216,7 +216,7 @@ class FMDataset(torch.utils.data.Dataset):
             feature_df[feature] = feature_df[feature].map(idx_dict[f"{feature}2idx"])
             feature_df = (
                 feature_df.groupby("item")
-                .apply(lambda r: sum([1 << (i + 1) for i in r[f"{feature}"].unique()]))
+                .apply(lambda r: sum([1 << i for i in r[f"{feature}"].unique()]))
                 .reset_index()
                 .rename(columns={0: f"{feature}"})
             )
@@ -227,8 +227,7 @@ class FMDataset(torch.utils.data.Dataset):
                 side_df = side_df.merge(feature_df, on="item", how="left")
 
         side_df["item"] = side_df["item"].map(idx_dict["item2idx"])
-        side_df = side_df.sort_values("item").fillna(0).astype(dtype=int)
-
+        side_df = side_df.sort_values("item").fillna(1).astype(dtype=int)
         # for recommend
         args.item2feat = []
         for feature in args.dataloader.feature:
