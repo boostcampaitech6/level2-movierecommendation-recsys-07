@@ -1,3 +1,5 @@
 name: fm
+log_negative: False
 n_neg: 400
-feature: ["genres", "directors"]
+log_neg: 1.02
+feature: ["genres", "decade"]

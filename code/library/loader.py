@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
+import math
 
 
 class MFDataset(torch.utils.data.Dataset):
@@ -77,6 +78,41 @@ class MFDataset(torch.utils.data.Dataset):
 
         users = df["user"].unique().repeat(n_neg)
         neg_df = pd.DataFrame(zip(users, neg_item), columns=["user", "item"])
+        neg_df["label"] = [0] * len(neg_df)
+
+        df = pd.concat([df, neg_df], axis=0)
+
+        self.data = df
+
+        self.values = self.data.values
+
+    def log_negative_sampling(self, args):
+        df = self.data
+        user_set = set(df["user"].unique())
+        item_set = set(df["item"].unique())
+        neg_user = np.zeros(args.n_users * args.n_items * 2, dtype=int)
+        neg_item = np.zeros(args.n_users * args.n_items * 2, dtype=int)
+        cnt = 0
+        for user, u_items in tqdm(df.groupby("user")["item"]):
+            u_set = set(u_items)
+            neg_set = item_set - u_set
+            len_user = int(math.log(len(neg_set), args.dataloader.log_neg))
+            user_neg_item = np.random.choice(list(neg_set), len_user, replace=False)
+            neg_user[cnt : cnt + len_user] = user
+            neg_item[cnt : cnt + len_user] = user_neg_item
+            cnt += len_user
+        for item, i_users in tqdm(df.groupby("item")["user"]):
+            i_set = set(i_users)
+            neg_set = user_set - i_set
+            len_item = int(math.log(len(neg_set), args.dataloader.log_neg))
+            item_neg_user = np.random.choice(list(neg_set), len_item, replace=False)
+            neg_user[cnt : cnt + len_item] = item_neg_user
+            neg_item[cnt : cnt + len_item] = item
+            cnt += len_item
+
+        neg_df = pd.DataFrame(
+            set(zip(neg_user[:cnt], neg_item[:cnt])), columns=["user", "item"]
+        )
         neg_df["label"] = [0] * len(neg_df)
 
         df = pd.concat([df, neg_df], axis=0)
@@ -162,6 +198,41 @@ class FMDataset(torch.utils.data.Dataset):
 
         users = df["user"].unique().repeat(n_neg)
         neg_df = pd.DataFrame(zip(users, neg_item), columns=["user", "item"])
+        neg_df["label"] = [0] * len(neg_df)
+
+        df = pd.concat([df, neg_df], axis=0)
+
+        self.data = df
+
+        self.values = self.data.values
+
+    def log_negative_sampling(self, args):
+        df = self.data
+        user_set = set(df["user"].unique())
+        item_set = set(df["item"].unique())
+        neg_user = np.zeros(args.n_users * args.n_items * 2, dtype=int)
+        neg_item = np.zeros(args.n_users * args.n_items * 2, dtype=int)
+        cnt = 0
+        for user, u_items in tqdm(df.groupby("user")["item"]):
+            u_set = set(u_items)
+            neg_set = item_set - u_set
+            len_user = int(math.log(len(neg_set), args.dataloader.log_neg))
+            user_neg_item = np.random.choice(list(neg_set), len_user, replace=False)
+            neg_user[cnt : cnt + len_user] = user
+            neg_item[cnt : cnt + len_user] = user_neg_item
+            cnt += len_user
+        for item, i_users in tqdm(df.groupby("item")["user"]):
+            i_set = set(i_users)
+            neg_set = user_set - i_set
+            len_item = int(math.log(len(neg_set), args.dataloader.log_neg))
+            item_neg_user = np.random.choice(list(neg_set), len_item, replace=False)
+            neg_user[cnt : cnt + len_item] = item_neg_user
+            neg_item[cnt : cnt + len_item] = item
+            cnt += len_item
+
+        neg_df = pd.DataFrame(
+            set(zip(neg_user[:cnt], neg_item[:cnt])), columns=["user", "item"]
+        )
         neg_df["label"] = [0] * len(neg_df)
 
         df = pd.concat([df, neg_df], axis=0)

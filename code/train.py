@@ -44,16 +44,24 @@ def main(args: DictConfig):
     if args.model.name.lower() in ["mf", "lmf"]:
         train_dataset = MFDataset(args)
         _, idx_dict, seen = train_dataset.load_data(args, train=True, idx_dict=None)
-        train_dataset.negative_sampling(args, n_neg=args.dataloader.n_neg)
-
+        if args.dataloader.log_negative == True:
+            train_dataset.log_negative_sampling(args)
+        else:
+            train_dataset.negative_sampling(args, n_neg=args.dataloader.n_neg)
         valid_dataset = MFDataset(args)
         valid_df, _, _ = valid_dataset.load_data(args, train=False, idx_dict=idx_dict)
 
-    elif args.model.name.lower() in ["fm", "lfm"]:
+    elif args.model.name.lower() in ["fm", "lfm", "cfm"]:
         train_dataset = FMDataset(args)
         _, idx_dict, seen = train_dataset.load_data(args, train=True, idx_dict=None)
-        train_dataset.negative_sampling(args, n_neg=args.dataloader.n_neg)
-        train_dataset.load_side_information(args, train=True, idx_dict=idx_dict)
+        if args.dataloader.log_negative == True:
+            train_dataset.log_negative_sampling(args)
+        else:
+            train_dataset.negative_sampling(args, n_neg=args.dataloader.n_neg)
+        if args.dataloader.feature:
+            train_dataset.load_side_information(args, train=True, idx_dict=idx_dict)
+        else:
+            args.feat_dim = []
 
         valid_dataset = FMDataset(args)
         valid_df, _, _ = valid_dataset.load_data(args, train=False, idx_dict=idx_dict)
