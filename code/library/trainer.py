@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 import wandb
 from tqdm import tqdm
 
-from .model import MF, LMF, FM, LFM
+from .model import MF, LMF, FM, LFM, CFM
 from .utils import get_logger, logging_conf
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
@@ -27,6 +27,7 @@ def get_model(args) -> nn.Module:
             "lmf": LMF,
             "fm": FM,
             "lfm": LFM,
+            "cfm": CFM,
         }.get(
             model_name
         )(args)
@@ -45,6 +46,7 @@ def run(
     seen: pd.Series,
     valid_df: pd.DataFrame,
 ):
+    torch.backends.cudnn.benchmark = True
 
     optimizer = get_optimizer(model=model, args=args)
     scheduler = get_scheduler(optimizer=optimizer, args=args)
@@ -126,6 +128,7 @@ def train(
             "lmf",
             "fm",
             "lfm",
+            "cfm",
         ]:  # To do change this -> loader-model interaction
             batch = batch.to(args.device)
             input = batch[:, :-1]
@@ -185,14 +188,17 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
 
         df = pd.DataFrame(zip(user_arr, rec.tolist()), columns=["user", "item"])
         return df
-    elif args.model.name.lower() in ["fm", "lfm"]:
+    elif args.model.name.lower() in ["fm", "lfm", "cfm"]:
         rec = torch.zeros(10 * args.n_users).to(args.device)
         user_repeat = np.arange(args.n_users).repeat(args.n_items)
         user_tensor = torch.tensor(user_repeat).reshape(-1, 1)
         item_tensor = torch.arange(args.n_items).reshape(-1, 1).repeat(args.n_users, 1)
-        feat_tensor = torch.tensor(args.item2feat).T.repeat(args.n_users, 1)
+        if args.dataloader.feature:
+            feat_tensor = torch.tensor(args.item2feat).T.repeat(args.n_users, 1)
 
-        full_tensor = torch.concat((user_tensor, item_tensor, feat_tensor), dim=1)
+            full_tensor = torch.concat((user_tensor, item_tensor, feat_tensor), dim=1)
+        else:
+            full_tensor = torch.concat((user_tensor, item_tensor), dim=1)
         # n_users가 div의 배수라는 전제가 필요함.
         # div가 작을수록 추천 속도 빨라지지만 OOM의 위험이 커짐.
         div = args.div
