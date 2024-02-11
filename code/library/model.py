@@ -320,3 +320,12 @@ class CFM(FM):
         mask = 2 ** torch.arange(bits - 1, -1, -1).to(x.device, x.dtype)
         out = x.unsqueeze(-1).bitwise_and(mask).ne(0).float().squeeze()
         return out
+
+
+class LCFM(CFM):
+    def __init__(self, args):
+        super().__init__(args)
+
+    def forward(self, x):
+        logit = super().forward(x)
+        return torch.exp(logit) / (1 + torch.exp(logit))

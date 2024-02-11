@@ -51,7 +51,7 @@ def main(args: DictConfig):
         valid_dataset = MFDataset(args)
         valid_df, _, _ = valid_dataset.load_data(args, train=False, idx_dict=idx_dict)
 
-    elif args.model.name.lower() in ["fm", "lfm", "cfm"]:
+    elif args.model.name.lower() in ["fm", "lfm", "cfm", "lcfm"]:
         train_dataset = FMDataset(args)
         _, idx_dict, seen = train_dataset.load_data(args, train=True, idx_dict=None)
         if args.dataloader.log_negative == True:

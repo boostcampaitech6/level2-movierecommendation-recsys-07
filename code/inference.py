@@ -34,7 +34,7 @@ def main(args):
     if args.model.name.lower() in ["mf", "lmf"]:
         train_dataset = MFDataset(args)
         _, _, seen = train_dataset.load_data(args, train=True, idx_dict=idx_dict)
-    elif args.model.name.lower() in ["fm", "lfm", "cfm"]:
+    elif args.model.name.lower() in ["fm", "lfm", "cfm", "lcfm"]:
         train_dataset = FMDataset(args)
         _, _, seen = train_dataset.load_data(args, train=True, idx_dict=idx_dict)
         train_dataset.load_side_information(args, train=True, idx_dict=idx_dict)
