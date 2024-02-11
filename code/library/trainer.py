@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 import wandb
 from tqdm import tqdm
 
-from .model import MF, LMF, FM, LFM, CFM
+from .model import MF, LMF, FM, LFM, CFM, LCFM
 from .utils import get_logger, logging_conf
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
@@ -28,9 +28,8 @@ def get_model(args) -> nn.Module:
             "fm": FM,
             "lfm": LFM,
             "cfm": CFM,
-        }.get(
-            model_name
-        )(args)
+            "lcfm": LCFM,
+        }.get(model_name)(args)
     except KeyError:
         logger.warn("No model name %s found", model_name)
     except Exception as e:
@@ -129,6 +128,7 @@ def train(
             "fm",
             "lfm",
             "cfm",
+            "lcfm",
         ]:  # To do change this -> loader-model interaction
             batch = batch.to(args.device)
             input = batch[:, :-1]
@@ -188,7 +188,7 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
 
         df = pd.DataFrame(zip(user_arr, rec.tolist()), columns=["user", "item"])
         return df
-    elif args.model.name.lower() in ["fm", "lfm", "cfm"]:
+    elif args.model.name.lower() in ["fm", "lfm", "cfm", "lcfm"]:
         rec = torch.zeros(10 * args.n_users).to(args.device)
         user_repeat = np.arange(args.n_users).repeat(args.n_items)
         user_tensor = torch.tensor(user_repeat).reshape(-1, 1)
