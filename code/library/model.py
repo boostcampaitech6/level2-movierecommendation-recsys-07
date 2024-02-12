@@ -274,6 +274,14 @@ class CFM(FM):
 
                 # attn = (batch, feat_dim, 1)
                 attn = self.attention[field](multi_embeddings)
+                mask = multi_hot_batch.unsqueeze(-1)
+                mask = torch.where(
+                    mask > 0,
+                    torch.zeros_like(mask),
+                    torch.ones_like(mask) * float("inf"),
+                )
+                # multi hot에서 0인 feature의 값을 -inf로 만들어 softmax에서 제외함.
+                attn -= mask
                 attn = torch.softmax(attn, dim=1)
 
                 # feature_emb = (batch, 1, hidden_dim)
