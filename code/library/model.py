@@ -215,7 +215,6 @@ class CFM(FM):
             dim_ = int((dim_ - kernel_size) / stride + 1)
         self.fc = nn.Linear(channel_ * dim_ * dim_, 1)
 
-        # self.fc = nn.Linear(channel * dim * dim, 1)
         self.apply(self.init_weights)
 
     def init_weights(self, module: nn.Module):

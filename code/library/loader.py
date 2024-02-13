@@ -249,7 +249,8 @@ class FMDataset(torch.utils.data.Dataset):
         return len(self.data)
 
     def load_side_information(self, args, train: bool, idx_dict: dict):
-        side_df = pd.DataFrame()
+        user_side_df = pd.DataFrame()
+        item_side_df = pd.DataFrame()
         args.feat_dim = []
         for feature in args.dataloader.feature:
             file_path = os.path.join(self.args.data_dir, f"{feature}.tsv")
@@ -285,29 +286,48 @@ class FMDataset(torch.utils.data.Dataset):
             # item: 0 / genre: 2^1 + 2^3 + 2^7
             # feature의 0은 None 값을 위한 padding
             feature_df[feature] = feature_df[feature].map(idx_dict[f"{feature}2idx"])
-            feature_df = (
-                feature_df.groupby("item")
-                .apply(lambda r: sum([1 << i for i in r[f"{feature}"].unique()]))
-                .reset_index()
-                .rename(columns={0: f"{feature}"})
-            )
+            if feature_df.columns[0] == "item":
+                feature_df = (
+                    feature_df.groupby("item")
+                    .apply(lambda r: sum([1 << i for i in r[f"{feature}"].unique()]))
+                    .reset_index()
+                    .rename(columns={0: f"{feature}"})
+                )
 
-            if side_df.empty:
-                side_df = feature_df
-            else:
-                side_df = side_df.merge(feature_df, on="item", how="left")
+                if item_side_df.empty:
+                    item_side_df = feature_df
+                else:
+                    item_side_df = item_side_df.merge(feature_df, on="item", how="left")
+            elif feature_df.columns[0] == "user":
+                feature_df = (
+                    feature_df.groupby("user")
+                    .apply(lambda r: sum([1 << i for i in r[f"{feature}"].unique()]))
+                    .reset_index()
+                    .rename(columns={0: f"{feature}"})
+                )
 
-        side_df["item"] = side_df["item"].map(idx_dict["item2idx"])
-        side_df = side_df.sort_values("item").fillna(1).astype(dtype=int)
+                if user_side_df.empty:
+                    user_side_df = feature_df
+                else:
+                    user_side_df = user_side_df.merge(feature_df, on="user", how="left")
+
+        item_side_df["item"] = item_side_df["item"].map(idx_dict["item2idx"])
+        item_side_df = item_side_df.sort_values("item").fillna(1).astype(dtype=int)
+        user_side_df["user"] = user_side_df["user"].map(idx_dict["user2idx"])
+        user_side_df = user_side_df.sort_values("user").fillna(1).astype(dtype=int)
         # for recommend
         args.item2feat = []
-        for feature in args.dataloader.feature:
-            if feature in ["directors", "genres", "titles", "writers", "years"]:
-                feature = feature[:-1]
-            feat_list = side_df[f"{feature}"].tolist()
+        for feature in item_side_df.columns[1:]:
+            feat_list = item_side_df[f"{feature}"].tolist()
             args.item2feat.append(feat_list)
+        args.user2feat = []
+        for feature in user_side_df.columns[1:]:
+            feat_list = user_side_df[f"{feature}"].tolist()
+            args.user2feat.append(feat_list)
         # label이 마지막 컬럼이 되도록 정렬
-        df = self.data.merge(side_df, on="item", how="left")
+        df = self.data.merge(item_side_df, on="item", how="left").merge(
+            user_side_df, on="user", how="left"
+        )
         col = df.columns.to_numpy()
         col = np.concatenate((col[:2], col[3:], col[2:3]))
         self.data = df[col]
