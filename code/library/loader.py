@@ -216,7 +216,9 @@ class FMDataset(torch.utils.data.Dataset):
         for user, u_items in tqdm(df.groupby("user")["item"]):
             u_set = set(u_items)
             neg_set = item_set - u_set
-            len_user = int(math.log(len(neg_set), args.dataloader.log_neg))
+            len_user = min(
+                int(math.log(len(neg_set), args.dataloader.log_neg)), len(neg_set)
+            )
             user_neg_item = np.random.choice(list(neg_set), len_user, replace=False)
             neg_user[cnt : cnt + len_user] = user
             neg_item[cnt : cnt + len_user] = user_neg_item
@@ -224,7 +226,9 @@ class FMDataset(torch.utils.data.Dataset):
         for item, i_users in tqdm(df.groupby("item")["user"]):
             i_set = set(i_users)
             neg_set = user_set - i_set
-            len_item = int(math.log(len(neg_set), args.dataloader.log_neg))
+            len_item = min(
+                int(math.log(len(neg_set), args.dataloader.log_neg)), len(neg_set)
+            )
             item_neg_user = np.random.choice(list(neg_set), len_item, replace=False)
             neg_user[cnt : cnt + len_item] = item_neg_user
             neg_item[cnt : cnt + len_item] = item
@@ -251,6 +255,7 @@ class FMDataset(torch.utils.data.Dataset):
     def load_side_information(self, args, train: bool, idx_dict: dict):
         user_side_df = pd.DataFrame()
         item_side_df = pd.DataFrame()
+        col = ["user", "item"]
         args.feat_dim = []
         for feature in args.dataloader.feature:
             file_path = os.path.join(self.args.data_dir, f"{feature}.tsv")
@@ -260,6 +265,7 @@ class FMDataset(torch.utils.data.Dataset):
             if feature in ["directors", "genres", "titles", "writers", "years"]:
                 feature = feature[:-1]
 
+            col.append(feature)
             if train:
                 # None 값을 위한 zero padding.
                 feat2idx = {
@@ -324,11 +330,12 @@ class FMDataset(torch.utils.data.Dataset):
         for feature in user_side_df.columns[1:]:
             feat_list = user_side_df[f"{feature}"].tolist()
             args.user2feat.append(feat_list)
-        # label이 마지막 컬럼이 되도록 정렬
+
         df = self.data.merge(item_side_df, on="item", how="left").merge(
             user_side_df, on="user", how="left"
         )
-        col = df.columns.to_numpy()
-        col = np.concatenate((col[:2], col[3:], col[2:3]))
+
+        # label이 마지막 컬럼이 되도록 정렬
+        col.append("label")
         self.data = df[col]
         self.values = self.data.values
