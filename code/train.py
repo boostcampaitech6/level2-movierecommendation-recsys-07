@@ -10,6 +10,8 @@ from library.utils import get_logger, set_seeds, logging_conf
 from library.loader import MFDataset, FMDataset
 from library.trainer import get_model, run
 
+import split_valid
+
 
 logger = get_logger(logging_conf)
 
@@ -74,4 +76,5 @@ def main(args: DictConfig):
 
 
 if __name__ == "__main__":
+    split_valid.main()
     main()

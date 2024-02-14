@@ -111,6 +111,8 @@ class FM(nn.Module):
 
         # for memory
         del user_x, item_x, feat_x
+        out = self.bias + first_x
+        del first_x
 
         ## second order interaction
         # first order와 비슷한 방식으로 embedding
@@ -143,7 +145,10 @@ class FM(nn.Module):
         # second_x = (batch, 1)
         second_x = 0.5 * torch.sum(square_of_sum - sum_of_square, dim=1, keepdim=True)
 
-        return (self.bias + first_x + second_x).squeeze(1)
+        # for memory
+        del square_of_sum, sum_of_square
+
+        return (out + second_x).squeeze(1)
 
     def binary(self, x: torch.tensor, bits: int):
         """

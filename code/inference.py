@@ -11,6 +11,7 @@ from library.loader import MFDataset, FMDataset
 import library.trainer as trainer
 from library.utils import get_logger, logging_conf
 
+import split_valid
 
 logger = get_logger(logging_conf)
 
@@ -52,4 +53,5 @@ def main(args):
 
 
 if __name__ == "__main__":
+    split_valid.main()
     main()
