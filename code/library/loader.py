@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import torch
 from tqdm import tqdm
+import math
 
 
 class MFDataset(torch.utils.data.Dataset):
@@ -77,6 +78,41 @@ class MFDataset(torch.utils.data.Dataset):
 
         users = df["user"].unique().repeat(n_neg)
         neg_df = pd.DataFrame(zip(users, neg_item), columns=["user", "item"])
+        neg_df["label"] = [0] * len(neg_df)
+
+        df = pd.concat([df, neg_df], axis=0)
+
+        self.data = df
+
+        self.values = self.data.values
+
+    def log_negative_sampling(self, args):
+        df = self.data
+        user_set = set(df["user"].unique())
+        item_set = set(df["item"].unique())
+        neg_user = np.zeros(args.n_users * args.n_items * 2, dtype=int)
+        neg_item = np.zeros(args.n_users * args.n_items * 2, dtype=int)
+        cnt = 0
+        for user, u_items in tqdm(df.groupby("user")["item"]):
+            u_set = set(u_items)
+            neg_set = item_set - u_set
+            len_user = int(math.log(len(neg_set), args.dataloader.log_neg))
+            user_neg_item = np.random.choice(list(neg_set), len_user, replace=False)
+            neg_user[cnt : cnt + len_user] = user
+            neg_item[cnt : cnt + len_user] = user_neg_item
+            cnt += len_user
+        for item, i_users in tqdm(df.groupby("item")["user"]):
+            i_set = set(i_users)
+            neg_set = user_set - i_set
+            len_item = int(math.log(len(neg_set), args.dataloader.log_neg))
+            item_neg_user = np.random.choice(list(neg_set), len_item, replace=False)
+            neg_user[cnt : cnt + len_item] = item_neg_user
+            neg_item[cnt : cnt + len_item] = item
+            cnt += len_item
+
+        neg_df = pd.DataFrame(
+            set(zip(neg_user[:cnt], neg_item[:cnt])), columns=["user", "item"]
+        )
         neg_df["label"] = [0] * len(neg_df)
 
         df = pd.concat([df, neg_df], axis=0)
@@ -170,6 +206,45 @@ class FMDataset(torch.utils.data.Dataset):
 
         self.values = self.data.values
 
+    def log_negative_sampling(self, args):
+        df = self.data
+        user_set = set(df["user"].unique())
+        item_set = set(df["item"].unique())
+        neg_user = np.zeros(args.n_users * args.n_items * 2, dtype=int)
+        neg_item = np.zeros(args.n_users * args.n_items * 2, dtype=int)
+        cnt = 0
+        for user, u_items in tqdm(df.groupby("user")["item"]):
+            u_set = set(u_items)
+            neg_set = item_set - u_set
+            len_user = min(
+                int(math.log(len(neg_set), args.dataloader.log_neg)), len(neg_set)
+            )
+            user_neg_item = np.random.choice(list(neg_set), len_user, replace=False)
+            neg_user[cnt : cnt + len_user] = user
+            neg_item[cnt : cnt + len_user] = user_neg_item
+            cnt += len_user
+        for item, i_users in tqdm(df.groupby("item")["user"]):
+            i_set = set(i_users)
+            neg_set = user_set - i_set
+            len_item = min(
+                int(math.log(len(neg_set), args.dataloader.log_neg)), len(neg_set)
+            )
+            item_neg_user = np.random.choice(list(neg_set), len_item, replace=False)
+            neg_user[cnt : cnt + len_item] = item_neg_user
+            neg_item[cnt : cnt + len_item] = item
+            cnt += len_item
+
+        neg_df = pd.DataFrame(
+            set(zip(neg_user[:cnt], neg_item[:cnt])), columns=["user", "item"]
+        )
+        neg_df["label"] = [0] * len(neg_df)
+
+        df = pd.concat([df, neg_df], axis=0)
+
+        self.data = df
+
+        self.values = self.data.values
+
     def __getitem__(self, index: int) -> np.ndarray:
         row = self.values[index]
         return row
@@ -178,7 +253,9 @@ class FMDataset(torch.utils.data.Dataset):
         return len(self.data)
 
     def load_side_information(self, args, train: bool, idx_dict: dict):
-        side_df = pd.DataFrame()
+        user_side_df = pd.DataFrame()
+        item_side_df = pd.DataFrame()
+        col = ["user", "item"]
         args.feat_dim = []
         for feature in args.dataloader.feature:
             file_path = os.path.join(self.args.data_dir, f"{feature}.tsv")
@@ -188,6 +265,7 @@ class FMDataset(torch.utils.data.Dataset):
             if feature in ["directors", "genres", "titles", "writers", "years"]:
                 feature = feature[:-1]
 
+            col.append(feature)
             if train:
                 # None 값을 위한 zero padding.
                 feat2idx = {
@@ -214,31 +292,50 @@ class FMDataset(torch.utils.data.Dataset):
             # item: 0 / genre: 2^1 + 2^3 + 2^7
             # feature의 0은 None 값을 위한 padding
             feature_df[feature] = feature_df[feature].map(idx_dict[f"{feature}2idx"])
-            feature_df = (
-                feature_df.groupby("item")
-                .apply(lambda r: sum([1 << (i + 1) for i in r[f"{feature}"].unique()]))
-                .reset_index()
-                .rename(columns={0: f"{feature}"})
-            )
+            if feature_df.columns[0] == "item":
+                feature_df = (
+                    feature_df.groupby("item")
+                    .apply(lambda r: sum([1 << i for i in r[f"{feature}"].unique()]))
+                    .reset_index()
+                    .rename(columns={0: f"{feature}"})
+                )
 
-            if side_df.empty:
-                side_df = feature_df
-            else:
-                side_df = side_df.merge(feature_df, on="item", how="left")
+                if item_side_df.empty:
+                    item_side_df = feature_df
+                else:
+                    item_side_df = item_side_df.merge(feature_df, on="item", how="left")
+            elif feature_df.columns[0] == "user":
+                feature_df = (
+                    feature_df.groupby("user")
+                    .apply(lambda r: sum([1 << i for i in r[f"{feature}"].unique()]))
+                    .reset_index()
+                    .rename(columns={0: f"{feature}"})
+                )
 
-        side_df["item"] = side_df["item"].map(idx_dict["item2idx"])
-        side_df = side_df.sort_values("item").fillna(0).astype(dtype=int)
+                if user_side_df.empty:
+                    user_side_df = feature_df
+                else:
+                    user_side_df = user_side_df.merge(feature_df, on="user", how="left")
 
+        item_side_df["item"] = item_side_df["item"].map(idx_dict["item2idx"])
+        item_side_df = item_side_df.sort_values("item").fillna(1).astype(dtype=int)
+        user_side_df["user"] = user_side_df["user"].map(idx_dict["user2idx"])
+        user_side_df = user_side_df.sort_values("user").fillna(1).astype(dtype=int)
         # for recommend
         args.item2feat = []
-        for feature in args.dataloader.feature:
-            if feature in ["directors", "genres", "titles", "writers", "years"]:
-                feature = feature[:-1]
-            feat_list = side_df[f"{feature}"].tolist()
+        for feature in item_side_df.columns[1:]:
+            feat_list = item_side_df[f"{feature}"].tolist()
             args.item2feat.append(feat_list)
+        args.user2feat = []
+        for feature in user_side_df.columns[1:]:
+            feat_list = user_side_df[f"{feature}"].tolist()
+            args.user2feat.append(feat_list)
+
+        df = self.data.merge(item_side_df, on="item", how="left").merge(
+            user_side_df, on="user", how="left"
+        )
+
         # label이 마지막 컬럼이 되도록 정렬
-        df = self.data.merge(side_df, on="item", how="left")
-        col = df.columns.to_numpy()
-        col = np.concatenate((col[:2], col[3:], col[2:3]))
+        col.append("label")
         self.data = df[col]
         self.values = self.data.values

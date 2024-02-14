@@ -1,2 +1,4 @@
 name: mf
+log_negative: False
 n_neg: 400
+log_neg: 1.02

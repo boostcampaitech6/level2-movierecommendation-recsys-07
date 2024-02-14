@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 import wandb
 from tqdm import tqdm
 
-from .model import MF, LMF, FM
+from .model import MF, LMF, FM, LFM, CFM, LCFM
 from .utils import get_logger, logging_conf
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
@@ -26,9 +26,10 @@ def get_model(args) -> nn.Module:
             "mf": MF,
             "lmf": LMF,
             "fm": FM,
-        }.get(
-            model_name
-        )(args)
+            "lfm": LFM,
+            "cfm": CFM,
+            "lcfm": LCFM,
+        }.get(model_name)(args)
     except KeyError:
         logger.warn("No model name %s found", model_name)
     except Exception as e:
@@ -44,6 +45,7 @@ def run(
     seen: pd.Series,
     valid_df: pd.DataFrame,
 ):
+    torch.backends.cudnn.benchmark = True
 
     optimizer = get_optimizer(model=model, args=args)
     scheduler = get_scheduler(optimizer=optimizer, args=args)
@@ -52,7 +54,7 @@ def run(
     early_stopping_counter = 0
 
     for epoch in range(args.n_epochs):
-        logger.info("Start Training: Epoch %s", epoch + 1)
+        logger.info("Start Training: Epoch %s", epoch)
 
         # Train
         train_auc, train_acc, train_loss = train(
@@ -124,6 +126,9 @@ def train(
             "mf",
             "lmf",
             "fm",
+            "lfm",
+            "cfm",
+            "lcfm",
         ]:  # To do change this -> loader-model interaction
             batch = batch.to(args.device)
             input = batch[:, :-1]
@@ -183,18 +188,24 @@ def recommend(model: nn.Module, seen: pd.Series, args) -> pd.DataFrame:
 
         df = pd.DataFrame(zip(user_arr, rec.tolist()), columns=["user", "item"])
         return df
-    elif args.model.name.lower() in ["fm"]:
+    elif args.model.name.lower() in ["fm", "lfm", "cfm", "lcfm"]:
         rec = torch.zeros(10 * args.n_users).to(args.device)
         user_repeat = np.arange(args.n_users).repeat(args.n_items)
         user_tensor = torch.tensor(user_repeat).reshape(-1, 1)
         item_tensor = torch.arange(args.n_items).reshape(-1, 1).repeat(args.n_users, 1)
-        feat_tensor = (
-            torch.tensor(args.item2feat)
-            .reshape(-1, len(args.feat_dim))
-            .repeat(args.n_users, 1)
-        )
 
-        full_tensor = torch.concat((user_tensor, item_tensor, feat_tensor), dim=1)
+        full_tensor = torch.concat((user_tensor, item_tensor), dim=1)
+        if args.item2feat:
+            item_feat_tensor = torch.tensor(args.item2feat).T.repeat(args.n_users, 1)
+            full_tensor = torch.concat((full_tensor, item_feat_tensor), dim=1)
+        if args.user2feat:
+            user_feat_tensor = (
+                torch.tensor(args.user2feat)
+                .repeat(args.n_items, 1)
+                .T.reshape(-1, len(args.user2feat))
+            )
+            full_tensor = torch.concat((full_tensor, user_feat_tensor), dim=1)
+
         # n_users가 div의 배수라는 전제가 필요함.
         # div가 작을수록 추천 속도 빨라지지만 OOM의 위험이 커짐.
         div = args.div
