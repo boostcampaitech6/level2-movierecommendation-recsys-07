@@ -1,0 +1,25 @@
+# basic configuration
+seed: 42
+device: "cuda"
+data_dir: "data/train/"
+train_file_name: "train_ratings.csv"
+model_dir: "models/"
+model_file_name: "best_model.pt"
+output_dir: "outputs/"
+asset_dir: "assets/"
+
+# train configuration
+log_steps: 100
+num_workers: 4
+n_epochs: 100
+batch_size: 512
+patience: 30
+
+# select components
+defaults:
+  - _self_
+  - dataloader: nease
+  - model: nease
+  - loss_function: original_ease
+  - optimizer: adam
+  - scheduler: plateau
