@@ -9,12 +9,11 @@ import wandb
 import time
 from tqdm import tqdm
 
-from .model import NEASE
+from .model import NEASE, MultiDAE, MultiVAE
 from .utils import get_logger, logging_conf
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
-from .criterion import original_ease
-from .recall import recall_at_10
+from .criterion import get_criterion
 
 
 logger = get_logger(logger_conf=logging_conf)
@@ -80,7 +79,7 @@ def Recall_at_k_batch(X_pred, heldout_batch, k=100):
 def get_model(args) -> nn.Module:
     try:
         model_name = args.model.name.lower()
-        model = {"nease": NEASE}.get(model_name)(args)
+        model = {"nease": NEASE, "dae": MultiDAE, "vae": MultiVAE}.get(model_name)(args)
     except KeyError:
         logger.warn("No model name %s found", model_name)
     except Exception as e:
@@ -94,7 +93,7 @@ def run(
     model: nn.Module,
     data,
 ):
-    criterion = original_ease  # todo
+    criterion = get_criterion(args)
     optimizer = get_optimizer(model, args)
 
     best_n100 = -np.inf
@@ -158,8 +157,22 @@ def train(model, criterion, optimizer, train_data, args):
         data = naive_sparse2tensor(data).to(args.device)
         optimizer.zero_grad()
 
-        recon_batch = model(data)
-        loss = criterion(recon_batch, data, args)
+        if args.model.name.lower()[-3:] == "vae" or args.model.name.lower() == "vasp":
+            if args.model.total_anneal_steps > 0:
+                anneal = min(
+                    args.model.anneal_cap,
+                    1.0 * args.update_count / args.model.total_anneal_steps,
+                )
+            else:
+                anneal = args.model.anneal_cap
+
+            optimizer.zero_grad()
+            recon_batch, mu, logvar = model(data)
+
+            loss = criterion(recon_batch, data, mu, logvar, anneal, args)
+        else:
+            recon_batch = model(data)
+            loss = criterion(recon_batch, data, args)
 
         loss.backward()
         train_loss += loss.item()
@@ -199,11 +212,26 @@ def evaluate(model, criterion, data_tr, data_te, args):
             end_idx = min(start_idx + args.batch_size, args.N)
             data = data_tr[e_idxlist[start_idx:end_idx]]
             heldout_data = data_te[e_idxlist[start_idx:end_idx]]
+            data_tensor = naive_sparse2tensor(data).to(
+                args.device
+            )  # todo. why? data_tensor should be distingshed from data
 
-            data_tensor = naive_sparse2tensor(data).to(args.device)
-
-            recon_batch = model(data_tensor)
-            loss = criterion(recon_batch, data_tensor, args)
+            if (
+                args.model.name.lower()[-3:] == "vae"
+                or args.model.name.lower() == "vasp"
+            ):
+                if args.model.total_anneal_steps > 0:
+                    anneal = min(
+                        args.model.anneal_cap,
+                        1.0 * args.update_count / args.model.total_anneal_steps,
+                    )
+                else:
+                    anneal = args.model.anneal_cap
+                recon_batch, mu, logvar = model(data_tensor)
+                loss = criterion(recon_batch, data_tensor, mu, logvar, anneal, args)
+            else:
+                recon_batch = model(data_tensor)
+                loss = criterion(recon_batch, data_tensor, args)
 
             total_val_loss_list.append(loss.item())
 
