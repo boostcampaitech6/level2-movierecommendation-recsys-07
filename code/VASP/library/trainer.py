@@ -9,12 +9,11 @@ import wandb
 import time
 from tqdm import tqdm
 
-from .model import NEASE
+from .model import NEASE, MultiVAE, MultiDAE
 from .utils import get_logger, logging_conf
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
-from .criterion import original_ease
-from .recall import recall_at_10
+from .criterion import original_ease, loss_function_dae, loss_function_vae
 
 
 logger = get_logger(logger_conf=logging_conf)
@@ -80,7 +79,9 @@ def Recall_at_k_batch(X_pred, heldout_batch, k=100):
 def get_model(args) -> nn.Module:
     try:
         model_name = args.model.name.lower()
-        model = {"nease": NEASE}.get(model_name)(args)
+        model = {"nease": NEASE, "multievae": MultiVAE, "multiedae": MultiDAE}.get(
+            model_name
+        )(args)
     except KeyError:
         logger.warn("No model name %s found", model_name)
     except Exception as e:
@@ -94,11 +95,19 @@ def run(
     model: nn.Module,
     data,
 ):
-    criterion = original_ease  # todo
+    # to do
+    if args.loss_function.name == "original_ease":
+        criterion = original_ease
+    elif args.loss_function.name == "loss_function_vae":
+        criterion = loss_function_vae
+    elif args.loss_function.name == "loss_function_dae":
+        criterion = loss_function_dae
+    else:
+        pass
+
     optimizer = get_optimizer(model, args)
 
     best_n100 = -np.inf
-    args.update_count = 0
 
     train_data, vad_data_tr, vad_data_te, test_data_tr, test_data_te = (
         data[0],
@@ -158,14 +167,31 @@ def train(model, criterion, optimizer, train_data, args):
         data = naive_sparse2tensor(data).to(args.device)
         optimizer.zero_grad()
 
-        recon_batch = model(data)
-        loss = criterion(recon_batch, data, args)
+        if args.model.name == "multieVAE":
+            if args.total_anneal_steps > 0:
+                anneal = min(
+                    args.anneal_cap, 1.0 * model.update / args.total_anneal_steps
+                )
+            else:
+                anneal = args.anneal_cap
+
+            recon_batch, mu, logvar = model(data)
+            loss = criterion(recon_batch, data, mu, logvar, anneal)
+
+        elif args.model.name == "multieVAE":
+            recon_batch = model(data)
+            loss = criterion(recon_batch, data)
+
+        else:
+            recon_batch = model(data)
+            loss = criterion(recon_batch, data, args)
 
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
         # scheduler.step(loss)
-        args.update_count += 1  # todo
+        if args.model.name == "multieVAE":
+            model.update += 1  # todo
 
         if batch_idx % args.log_steps == 0 and batch_idx > 0:
             elapsed = time.time() - start_time
@@ -202,8 +228,21 @@ def evaluate(model, criterion, data_tr, data_te, args):
 
             data_tensor = naive_sparse2tensor(data).to(args.device)
 
-            recon_batch = model(data_tensor)
-            loss = criterion(recon_batch, data_tensor, args)
+            if args.model.name == "multiVAE":
+
+                if args.total_anneal_steps > 0:
+                    anneal = min(
+                        args.anneal_cap, 1.0 * model.update / args.total_anneal_steps
+                    )
+                else:
+                    anneal = args.anneal_cap
+
+                recon_batch, mu, logvar = model(data_tensor)
+                loss = criterion(recon_batch, data_tensor, mu, logvar, anneal)
+
+            else:
+                recon_batch = model(data_tensor)
+                loss = criterion(recon_batch, data_tensor, args)
 
             total_val_loss_list.append(loss.item())
 
