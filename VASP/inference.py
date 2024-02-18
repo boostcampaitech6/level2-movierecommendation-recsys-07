@@ -19,6 +19,7 @@ if __name__ == "__main__":
 
     train_df = pd.read_csv("../data/train/train_ratings.csv")
 
+    # inference랑 train 단계의 mapping 맞추기
     user2idx = {v: i for i, v in enumerate(train_df["user"].unique())}
     item2idx = {v: i for i, v in enumerate(train_df["item"].unique())}
 
