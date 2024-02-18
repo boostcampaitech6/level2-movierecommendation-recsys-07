@@ -113,14 +113,14 @@ def run(
         args.epoch = epoch
         epoch_start_time = time.time()
         train(model, criterion, optimizer, train_data, args)
-        val_loss, n100, r20, r50 = evaluate(
+        val_loss, n100, r10, r20, r50 = evaluate(
             model, criterion, vad_data_tr, vad_data_te, args
         )
         print("-" * 89)
         print(
             "| end of epoch {:3d} | time: {:4.2f}s | valid loss {:4.2f} | "
-            "n100 {:5.3f} | r20 {:5.3f} | r50 {:5.3f}".format(
-                epoch, time.time() - epoch_start_time, val_loss, n100, r20, r50
+            "n100 {:5.3f} | r10 {:5.3f} | r20 {:5.3f} | r50 {:5.3f}".format(
+                epoch, time.time() - epoch_start_time, val_loss, n100, r10, r20, r50
             )
         )
         print("-" * 89)
@@ -134,13 +134,13 @@ def run(
     with open(os.path.join(args.model_dir, args.model_file_name), "rb") as f:
         model = torch.load(f)
     # Run on test data.
-    test_loss, n100, r20, r50 = evaluate(
+    test_loss, n100, r10, r20, r50 = evaluate(
         model, criterion, test_data_tr, test_data_te, args
     )
     print("=" * 89)
     print(
-        "| End of training | test loss {:4.2f} | n100 {:4.2f} | r20 {:4.2f} | "
-        "r50 {:4.2f}".format(test_loss, n100, r20, r50)
+        "| End of training | test loss {:4.2f} | n100 {:4.2f} | r10 {:4.2f} | r20 {:4.2f} | "
+        "r50 {:4.2f}".format(test_loss, n100, r10, r20, r50)
     )
     print("=" * 89)
 
@@ -206,6 +206,7 @@ def evaluate(model, criterion, data_tr, data_te, args):
     e_N = data_tr.shape[0]
     total_val_loss_list = []
     n100_list = []
+    r10_list = []
     r20_list = []
     r50_list = []
 
@@ -242,20 +243,24 @@ def evaluate(model, criterion, data_tr, data_te, args):
             recon_batch[data.nonzero()] = -np.inf
 
             n100 = NDCG_binary_at_k_batch(recon_batch, heldout_data, 100)
+            r10 = Recall_at_k_batch(recon_batch, heldout_data, 10)
             r20 = Recall_at_k_batch(recon_batch, heldout_data, 20)
             r50 = Recall_at_k_batch(recon_batch, heldout_data, 50)
 
             n100_list.append(n100)
+            r10_list.append(r10)
             r20_list.append(r20)
             r50_list.append(r50)
 
     n100_list = np.concatenate(n100_list)
+    r10_list = np.concatenate(r10_list)
     r20_list = np.concatenate(r20_list)
     r50_list = np.concatenate(r50_list)
 
     return (
         np.nanmean(total_val_loss_list),
         np.nanmean(n100_list),
+        np.nanmean(r10_list),
         np.nanmean(r20_list),
         np.nanmean(r50_list),
     )
