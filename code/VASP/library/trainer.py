@@ -97,6 +97,7 @@ def run(
     optimizer = get_optimizer(model, args)
 
     best_n100 = -np.inf
+    args.update_count = 0
 
     train_data, vad_data_tr, vad_data_te, test_data_tr, test_data_te = (
         data[0],
