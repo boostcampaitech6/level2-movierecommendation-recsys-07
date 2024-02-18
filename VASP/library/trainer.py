@@ -9,7 +9,7 @@ import wandb
 import time
 from tqdm import tqdm
 
-from .model import NEASE, MultiDAE, MultiVAE
+from .model import NEASE, MultiDAE, MultiVAE, VASP
 from .utils import get_logger, logging_conf
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
@@ -79,7 +79,9 @@ def Recall_at_k_batch(X_pred, heldout_batch, k=100):
 def get_model(args) -> nn.Module:
     try:
         model_name = args.model.name.lower()
-        model = {"nease": NEASE, "dae": MultiDAE, "vae": MultiVAE}.get(model_name)(args)
+        model = {"nease": NEASE, "dae": MultiDAE, "vae": MultiVAE, "vasp": VASP}.get(
+            model_name
+        )(args)
     except KeyError:
         logger.warn("No model name %s found", model_name)
     except Exception as e:
@@ -178,8 +180,7 @@ def train(model, criterion, optimizer, train_data, args):
         train_loss += loss.item()
         optimizer.step()
         # scheduler.step(loss)
-        if args.model.name == "multieVAE":
-            model.update += 1  # todo
+        args.update_count += 1
 
         if batch_idx % args.log_steps == 0 and batch_idx > 0:
             elapsed = time.time() - start_time
