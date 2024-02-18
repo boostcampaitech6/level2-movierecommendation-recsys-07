@@ -1,0 +1,6 @@
+name: vae
+p_dims: [200, 600]
+q_dims: []
+dropout: 0.5
+anneal_cap: 0.2
+total_anneal_steps: 200000

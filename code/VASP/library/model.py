@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 
 class NEASE(nn.Module):
@@ -31,8 +32,11 @@ class MultiDAE(nn.Module):
     https://arxiv.org/abs/1802.05814
     """
 
-    def __init__(self, p_dims, q_dims=None, dropout=0.5):
+    def __init__(self, args):
         super(MultiDAE, self).__init__()
+        p_dims = args.model.p_dims
+        q_dims = args.model.q_dims
+        dropout = args.model.dropout
         self.p_dims = p_dims
         if q_dims:
             assert (
@@ -88,8 +92,11 @@ class MultiVAE(nn.Module):
     https://arxiv.org/abs/1802.05814
     """
 
-    def __init__(self, p_dims, q_dims=None, dropout=0.5):
+    def __init__(self, args):
         super(MultiVAE, self).__init__()
+        p_dims = args.model.p_dims + [args.n_items]
+        q_dims = args.model.q_dims
+        dropout = args.model.dropout
         self.p_dims = p_dims
         if q_dims:
             assert (
@@ -117,13 +124,8 @@ class MultiVAE(nn.Module):
             ]
         )
 
-        self.update = 0
         self.drop = nn.Dropout(dropout)
         self.init_weights()
-
-    def get_update_value(self):
-        # 현재 update 값 반환
-        return self.update
 
     def forward(self, input):
         mu, logvar = self.encode(input)
@@ -141,7 +143,6 @@ class MultiVAE(nn.Module):
             else:
                 mu = h[:, : self.q_dims[-1]]
                 logvar = h[:, self.q_dims[-1] :]
-
         return mu, logvar
 
     def reparameterize(self, mu, logvar):
@@ -156,9 +157,8 @@ class MultiVAE(nn.Module):
         h = z
         for i, layer in enumerate(self.p_layers):
             h = layer(h)
-            if i != len(self.p_layers):
+            if i != len(self.p_layers) - 1:
                 h = F.tanh(h)
-
         return h
 
     def init_weights(self):

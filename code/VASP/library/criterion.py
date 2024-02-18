@@ -1,24 +1,20 @@
 import torch
+import torch.nn.functional as F
 
 
-def get_criterion(pred: torch.Tensor, target: torch.Tensor, args):
-    """if args.loss_function.name.lower() == "bce":
-        loss = torch.nn.BCEWithLogitsLoss(reduction="none")
-        loss = loss(pred, target)
-        loss = torch.mean(loss)
-    elif args.loss_function.name.lower() == "roc_star":
-        loss = roc_star_paper(pred, target, args)
-    elif args.loss_function.name.lower() == "bpr":
-        loss = BPR(pred, target, args)"""
+def get_criterion(args):
     try:
         loss_function_name = args.loss_function.name.lower()
-        loss_function = {"original_ease": original_ease}.get(loss_function_name)
-        loss = loss_function(pred, target, args)
+        loss_function = {
+            "original_ease": original_ease,
+            "loss_function_vae": loss_function_vae,
+            "loss_function_dae": loss_function_dae,
+        }.get(loss_function_name)
     except:
         raise NotImplementedError(
             f"loss function {args.loss_function} is not implemented"
         )
-    return loss
+    return loss_function
 
 
 def roc_star_paper(y_pred: torch.Tensor, _y_true: torch.Tensor, args):
@@ -96,13 +92,13 @@ def original_ease(recon_x, x, args):
     return loss + args.loss_function.lambd * regularization
 
 
-def loss_function_vae(recon_x, x, mu, logvar, anneal=1.0):
+def loss_function_vae(recon_x, x, mu, logvar, anneal, args):
     BCE = -torch.mean(torch.sum(F.log_softmax(recon_x, 1) * x, -1))
     KLD = -0.5 * torch.mean(torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), dim=1))
 
     return BCE + anneal * KLD
 
 
-def loss_function_dae(recon_x, x):
+def loss_function_dae(recon_x, x, args):
     BCE = -torch.mean(torch.sum(F.log_softmax(recon_x, 1) * x, -1))
     return BCE

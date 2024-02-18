@@ -1,0 +1,4 @@
+name: dae
+p_dims: [200, 600]
+q_dims: None
+dropout: 0.5
