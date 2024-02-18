@@ -97,7 +97,6 @@ def run(
     optimizer = get_optimizer(model, args)
 
     best_n100 = -np.inf
-    args.update_count = 0
 
     train_data, vad_data_tr, vad_data_te, test_data_tr, test_data_te = (
         data[0],
@@ -178,7 +177,8 @@ def train(model, criterion, optimizer, train_data, args):
         train_loss += loss.item()
         optimizer.step()
         # scheduler.step(loss)
-        args.update_count += 1  # todo
+        if args.model.name == "multieVAE":
+            model.update += 1  # todo
 
         if batch_idx % args.log_steps == 0 and batch_idx > 0:
             elapsed = time.time() - start_time
