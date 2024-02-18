@@ -8,6 +8,7 @@ import bottleneck as bn
 import wandb
 import time
 from tqdm import tqdm
+from scipy.sparse import csr_matrix
 
 from .model import NEASE, MultiDAE, MultiVAE, VASP
 from .utils import get_logger, logging_conf
@@ -108,7 +109,6 @@ def run(
         data[3],
         data[4],
     )
-
     for epoch in range(1, args.n_epochs + 1):
         args.epoch = epoch
         epoch_start_time = time.time()
@@ -153,50 +153,129 @@ def train(model, criterion, optimizer, train_data, args):
 
     np.random.shuffle(args.idxlist)
 
-    for batch_idx, start_idx in enumerate(range(0, args.N, args.batch_size)):
-        end_idx = min(start_idx + args.batch_size, args.N)
-        data = train_data[args.idxlist[start_idx:end_idx]]
-        data = naive_sparse2tensor(data).to(args.device)
-        optimizer.zero_grad()
-
-        if args.model.name.lower()[-3:] == "vae" or args.model.name.lower() == "vasp":
-            if args.model.total_anneal_steps > 0:
-                anneal = min(
-                    args.model.anneal_cap,
-                    1.0 * args.update_count / args.model.total_anneal_steps,
-                )
-            else:
-                anneal = args.model.anneal_cap
+    if args.data_augmentation:
+        train_data_1 = train_data[0]
+        train_data_2 = train_data[1]
+        for batch_idx, start_idx in enumerate(range(0, args.N, args.batch_size)):
+            end_idx = min(start_idx + args.batch_size, args.N)
+            data_1 = train_data_1[args.idxlist[start_idx:end_idx]]
+            data_2 = train_data_2[args.idxlist[start_idx:end_idx]]
+            data_1 = naive_sparse2tensor(data_1).to(args.device)
+            data_2 = naive_sparse2tensor(data_2).to(args.device)
 
             optimizer.zero_grad()
-            recon_batch, mu, logvar = model(data)
+            if (
+                args.model.name.lower()[-3:] == "vae"
+                or args.model.name.lower() == "vasp"
+            ):
+                if args.model.total_anneal_steps > 0:
+                    anneal = min(
+                        args.model.anneal_cap,
+                        1.0 * args.update_count / args.model.total_anneal_steps,
+                    )
+                else:
+                    anneal = args.model.anneal_cap
 
-            loss = criterion(recon_batch, data, mu, logvar, anneal, args)
-        else:
-            recon_batch = model(data)
-            loss = criterion(recon_batch, data, args)
+                optimizer.zero_grad()
+                recon_batch, mu, logvar = model(data_1)
+                loss = criterion(recon_batch, data_2, mu, logvar, anneal, args)
+            else:
+                recon_batch = model(data_1)
+                loss = criterion(recon_batch, data_2, args)
 
-        loss.backward()
-        train_loss += loss.item()
-        optimizer.step()
-        # scheduler.step(loss)
-        args.update_count += 1
+            loss.backward()
+            train_loss += loss.item()
+            optimizer.step()
 
-        if batch_idx % args.log_steps == 0 and batch_idx > 0:
-            elapsed = time.time() - start_time
-            print(
-                "| epoch {:3d} | {:4d}/{:4d} batches | ms/batch {:4.2f} | "
-                "loss {:4.2f}".format(
-                    args.epoch,
-                    batch_idx,
-                    len(range(0, args.N, args.batch_size)),
-                    elapsed * 1000 / args.log_steps,
-                    train_loss / args.log_steps,
+            optimizer.zero_grad()
+            if (
+                args.model.name.lower()[-3:] == "vae"
+                or args.model.name.lower() == "vasp"
+            ):
+                if args.model.total_anneal_steps > 0:
+                    anneal = min(
+                        args.model.anneal_cap,
+                        1.0 * args.update_count / args.model.total_anneal_steps,
+                    )
+                else:
+                    anneal = args.model.anneal_cap
+
+                optimizer.zero_grad()
+                recon_batch, mu, logvar = model(data_2)
+                loss = criterion(recon_batch, data_1, mu, logvar, anneal, args)
+            else:
+                recon_batch = model(data_2)
+                loss = criterion(recon_batch, data_1, args)
+
+            loss.backward()
+            train_loss += loss.item()
+            optimizer.step()
+
+            # scheduler.step(loss)
+            args.update_count += 1
+            if batch_idx % args.log_steps == 0 and batch_idx > 0:
+                elapsed = time.time() - start_time
+                print(
+                    "| epoch {:3d} | {:4d}/{:4d} batches | ms/batch {:4.2f} | "
+                    "loss {:4.2f}".format(
+                        args.epoch,
+                        batch_idx,
+                        len(range(0, args.N, args.batch_size)),
+                        elapsed * 1000 / args.log_steps,
+                        train_loss / args.log_steps,
+                    )
                 )
-            )
 
-            start_time = time.time()
-            train_loss = 0.0
+                start_time = time.time()
+                train_loss = 0.0
+    else:
+        for batch_idx, start_idx in enumerate(range(0, args.N, args.batch_size)):
+            end_idx = min(start_idx + args.batch_size, args.N)
+            data = train_data[args.idxlist[start_idx:end_idx]]
+            data = naive_sparse2tensor(data).to(args.device)
+            optimizer.zero_grad()
+
+            if (
+                args.model.name.lower()[-3:] == "vae"
+                or args.model.name.lower() == "vasp"
+            ):
+                if args.model.total_anneal_steps > 0:
+                    anneal = min(
+                        args.model.anneal_cap,
+                        1.0 * args.update_count / args.model.total_anneal_steps,
+                    )
+                else:
+                    anneal = args.model.anneal_cap
+
+                optimizer.zero_grad()
+                recon_batch, mu, logvar = model(data)
+
+                loss = criterion(recon_batch, data, mu, logvar, anneal, args)
+            else:
+                recon_batch = model(data)
+                loss = criterion(recon_batch, data, args)
+
+            loss.backward()
+            train_loss += loss.item()
+            optimizer.step()
+            # scheduler.step(loss)
+            args.update_count += 1
+
+            if batch_idx % args.log_steps == 0 and batch_idx > 0:
+                elapsed = time.time() - start_time
+                print(
+                    "| epoch {:3d} | {:4d}/{:4d} batches | ms/batch {:4.2f} | "
+                    "loss {:4.2f}".format(
+                        args.epoch,
+                        batch_idx,
+                        len(range(0, args.N, args.batch_size)),
+                        elapsed * 1000 / args.log_steps,
+                        train_loss / args.log_steps,
+                    )
+                )
+
+                start_time = time.time()
+                train_loss = 0.0
 
 
 def evaluate(model, criterion, data_tr, data_te, args):

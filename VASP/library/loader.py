@@ -27,7 +27,10 @@ def filter_triplets(tp, min_uc=5, min_sc=0):
 def split_train_test_proportion(
     data, test_prop=0.2
 ):  # todo change name. train_test는 이름이 구림.
-    data_grouped_by_user = data.groupby("user")
+    try:
+        data_grouped_by_user = data.groupby("user")
+    except:
+        data_grouped_by_user = data.groupby("uid")
     tr_list, te_list = list(), list()
 
     np.random.seed(98765)
@@ -67,6 +70,7 @@ class DataLoader:
     """
 
     def __init__(self, args):
+        self.args = args
         DATA_DIR = args.data_dir
         raw_data = pd.read_csv(os.path.join(DATA_DIR, "train_ratings.csv"), header=0)
 
@@ -169,6 +173,22 @@ class DataLoader:
             dtype="float64",
             shape=(n_users, self.n_items),
         )
+        self.args.N = data.shape[0]
+        if self.args.data_augmentation:
+            data1, data2 = split_train_test_proportion(tp, 0.5)
+            rows, cols = data1["uid"], data1["sid"]
+            data1 = sparse.csr_matrix(
+                (np.ones_like(rows), (rows, cols)),
+                dtype="float64",
+                shape=(n_users, self.n_items),
+            )
+            rows, cols = data2["uid"], data2["sid"]
+            data2 = sparse.csr_matrix(
+                (np.ones_like(rows), (rows, cols)),
+                dtype="float64",
+                shape=(n_users, self.n_items),
+            )
+            data = [data1, data2]
         return data
 
     def _load_tr_te_data(self, datatype="test"):
