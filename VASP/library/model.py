@@ -34,7 +34,7 @@ class MultiDAE(nn.Module):
 
     def __init__(self, args):
         super(MultiDAE, self).__init__()
-        p_dims = args.model.p_dims
+        p_dims = args.model.p_dims + [args.n_items]
         q_dims = args.model.q_dims
         dropout = args.model.dropout
         self.p_dims = p_dims

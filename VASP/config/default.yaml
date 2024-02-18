@@ -19,7 +19,7 @@ patience: 30
 defaults:
   - _self_
   - dataloader: nease
-  - model: nease
-  - loss_function: original_ease
+  - model: dae
+  - loss_function: dae
   - optimizer: adam
   - scheduler: plateau
