@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import pandas as pd
+import pickle
 from scipy import sparse
 
 
@@ -100,6 +101,10 @@ class DataLoader:
 
         show2id = dict((sid, i) for (i, sid) in enumerate(unique_sid))
         profile2id = dict((pid, i) for (i, pid) in enumerate(unique_uid))
+        with open(os.path.join(args.model_dir, "item2idx.pickle"), "wb") as handle:
+            pickle.dump(show2id, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open(os.path.join(args.model_dir, "user2idx.pickle"), "wb") as handle:
+            pickle.dump(profile2id, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
         pro_dir = os.path.join(DATA_DIR, "pro_sg")
 
