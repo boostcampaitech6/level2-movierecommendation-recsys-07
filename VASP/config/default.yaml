@@ -14,12 +14,13 @@ num_workers: 4
 n_epochs: 100
 batch_size: 512
 patience: 30
+data_augmentation: False
 
 # select components
 defaults:
   - _self_
   - dataloader: nease
-  - model: nease
-  - loss_function: original_ease
-  - optimizer: adam
+  - model: vasp
+  - loss_function: vae
+  - optimizer: adamw
   - scheduler: plateau

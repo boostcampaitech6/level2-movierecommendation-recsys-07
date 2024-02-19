@@ -34,7 +34,7 @@ class MultiDAE(nn.Module):
 
     def __init__(self, args):
         super(MultiDAE, self).__init__()
-        p_dims = args.model.p_dims
+        p_dims = args.model.p_dims + [args.n_items]
         q_dims = args.model.q_dims
         dropout = args.model.dropout
         self.p_dims = p_dims
@@ -183,3 +183,28 @@ class MultiVAE(nn.Module):
 
             # Normal Initialization for Biases
             layer.bias.data.normal_(0.0, 0.001)
+
+
+class VASP(MultiVAE):
+    def __init__(self, args):
+        super().__init__(args)
+        self.weight = nn.Parameter(torch.randn(args.n_items, args.n_items))
+        self.register_buffer(
+            "mask", torch.ones(args.n_items, args.n_items) - torch.eye(args.n_items)
+        )
+
+    def nease(self, input):
+        weight = self.weight * self.mask
+        linear_output = F.linear(input, weight)
+        return linear_output
+
+    def vae(self, input):
+        mu, logvar = self.encode(input)
+        z = self.reparameterize(mu, logvar)
+        return self.decode(z), mu, logvar
+
+    def forward(self, input):
+        vae_result, mu, logvar = self.vae(input)
+        nease_result = torch.sigmoid(self.nease(input))
+        hadamard_product_result = vae_result * nease_result
+        return hadamard_product_result, mu, logvar

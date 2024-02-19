@@ -47,7 +47,6 @@ def main(args: DictConfig):
     test_data_tr, test_data_te = loader.load_data("test")
     data = [train_data, vad_data_tr, vad_data_te, test_data_tr, test_data_te]
 
-    args.N = train_data.shape[0]
     args.idxlist = list(range(args.N))
 
     logger.info("Building Model ...")

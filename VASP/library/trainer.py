@@ -8,8 +8,9 @@ import bottleneck as bn
 import wandb
 import time
 from tqdm import tqdm
+from scipy.sparse import csr_matrix
 
-from .model import NEASE, MultiDAE, MultiVAE
+from .model import NEASE, MultiDAE, MultiVAE, VASP
 from .utils import get_logger, logging_conf
 from .optimizer import get_optimizer
 from .scheduler import get_scheduler
@@ -79,7 +80,9 @@ def Recall_at_k_batch(X_pred, heldout_batch, k=100):
 def get_model(args) -> nn.Module:
     try:
         model_name = args.model.name.lower()
-        model = {"nease": NEASE, "dae": MultiDAE, "vae": MultiVAE}.get(model_name)(args)
+        model = {"nease": NEASE, "dae": MultiDAE, "vae": MultiVAE, "vasp": VASP}.get(
+            model_name
+        )(args)
     except KeyError:
         logger.warn("No model name %s found", model_name)
     except Exception as e:
@@ -106,22 +109,30 @@ def run(
         data[3],
         data[4],
     )
-
     for epoch in range(1, args.n_epochs + 1):
         args.epoch = epoch
         epoch_start_time = time.time()
         train(model, criterion, optimizer, train_data, args)
-        val_loss, n100, r20, r50 = evaluate(
+        val_loss, n100, r10, r20, r50 = evaluate(
             model, criterion, vad_data_tr, vad_data_te, args
         )
-        print("-" * 89)
+        wandb.log(
+            {
+                "epoch": epoch,
+                "NDCG@100": n100,
+                "recall@10": r10,
+                "recall@20": r20,
+                "recall@50": r50,
+            }
+        )
+        print("-" * 105)
         print(
             "| end of epoch {:3d} | time: {:4.2f}s | valid loss {:4.2f} | "
-            "n100 {:5.3f} | r20 {:5.3f} | r50 {:5.3f}".format(
-                epoch, time.time() - epoch_start_time, val_loss, n100, r20, r50
+            "n100 {:5.3f} | r10 {:5.3f} | r20 {:5.3f} | r50 {:5.3f}".format(
+                epoch, time.time() - epoch_start_time, val_loss, n100, r10, r20, r50
             )
         )
-        print("-" * 89)
+        print("-" * 105)
         n_iter = epoch * len(range(0, args.N, args.batch_size))
         # Save the model if the n100 is the best we've seen so far.
         if n100 > best_n100:
@@ -132,15 +143,15 @@ def run(
     with open(os.path.join(args.model_dir, args.model_file_name), "rb") as f:
         model = torch.load(f)
     # Run on test data.
-    test_loss, n100, r20, r50 = evaluate(
+    test_loss, n100, r10, r20, r50 = evaluate(
         model, criterion, test_data_tr, test_data_te, args
     )
-    print("=" * 89)
+    print("=" * 105)
     print(
-        "| End of training | test loss {:4.2f} | n100 {:4.2f} | r20 {:4.2f} | "
-        "r50 {:4.2f}".format(test_loss, n100, r20, r50)
+        "| End of training | test loss {:4.2f} | n100 {:4.2f} | r10 {:4.2f} | r20 {:4.2f} | "
+        "r50 {:4.2f}".format(test_loss, n100, r10, r20, r50)
     )
-    print("=" * 89)
+    print("=" * 105)
 
 
 def train(model, criterion, optimizer, train_data, args):
@@ -151,51 +162,129 @@ def train(model, criterion, optimizer, train_data, args):
 
     np.random.shuffle(args.idxlist)
 
-    for batch_idx, start_idx in enumerate(range(0, args.N, args.batch_size)):
-        end_idx = min(start_idx + args.batch_size, args.N)
-        data = train_data[args.idxlist[start_idx:end_idx]]
-        data = naive_sparse2tensor(data).to(args.device)
-        optimizer.zero_grad()
-
-        if args.model.name.lower()[-3:] == "vae" or args.model.name.lower() == "vasp":
-            if args.model.total_anneal_steps > 0:
-                anneal = min(
-                    args.model.anneal_cap,
-                    1.0 * args.update_count / args.model.total_anneal_steps,
-                )
-            else:
-                anneal = args.model.anneal_cap
+    if args.data_augmentation:
+        train_data_1 = train_data[0]
+        train_data_2 = train_data[1]
+        for batch_idx, start_idx in enumerate(range(0, args.N, args.batch_size)):
+            end_idx = min(start_idx + args.batch_size, args.N)
+            data_1 = train_data_1[args.idxlist[start_idx:end_idx]]
+            data_2 = train_data_2[args.idxlist[start_idx:end_idx]]
+            data_1 = naive_sparse2tensor(data_1).to(args.device)
+            data_2 = naive_sparse2tensor(data_2).to(args.device)
 
             optimizer.zero_grad()
-            recon_batch, mu, logvar = model(data)
+            if (
+                args.model.name.lower()[-3:] == "vae"
+                or args.model.name.lower() == "vasp"
+            ):
+                if args.model.total_anneal_steps > 0:
+                    anneal = min(
+                        args.model.anneal_cap,
+                        1.0 * args.update_count / args.model.total_anneal_steps,
+                    )
+                else:
+                    anneal = args.model.anneal_cap
 
-            loss = criterion(recon_batch, data, mu, logvar, anneal, args)
-        else:
-            recon_batch = model(data)
-            loss = criterion(recon_batch, data, args)
+                optimizer.zero_grad()
+                recon_batch, mu, logvar = model(data_1)
+                loss = criterion(recon_batch, data_2, mu, logvar, anneal, args)
+            else:
+                recon_batch = model(data_1)
+                loss = criterion(recon_batch, data_2, args)
 
-        loss.backward()
-        train_loss += loss.item()
-        optimizer.step()
-        # scheduler.step(loss)
-        if args.model.name == "multieVAE":
-            model.update += 1  # todo
+            loss.backward()
+            train_loss += loss.item()
+            optimizer.step()
 
-        if batch_idx % args.log_steps == 0 and batch_idx > 0:
-            elapsed = time.time() - start_time
-            print(
-                "| epoch {:3d} | {:4d}/{:4d} batches | ms/batch {:4.2f} | "
-                "loss {:4.2f}".format(
-                    args.epoch,
-                    batch_idx,
-                    len(range(0, args.N, args.batch_size)),
-                    elapsed * 1000 / args.log_steps,
-                    train_loss / args.log_steps,
+            optimizer.zero_grad()
+            if (
+                args.model.name.lower()[-3:] == "vae"
+                or args.model.name.lower() == "vasp"
+            ):
+                if args.model.total_anneal_steps > 0:
+                    anneal = min(
+                        args.model.anneal_cap,
+                        1.0 * args.update_count / args.model.total_anneal_steps,
+                    )
+                else:
+                    anneal = args.model.anneal_cap
+
+                optimizer.zero_grad()
+                recon_batch, mu, logvar = model(data_2)
+                loss = criterion(recon_batch, data_1, mu, logvar, anneal, args)
+            else:
+                recon_batch = model(data_2)
+                loss = criterion(recon_batch, data_1, args)
+
+            loss.backward()
+            train_loss += loss.item()
+            optimizer.step()
+
+            # scheduler.step(loss)
+            args.update_count += 1
+            if batch_idx % args.log_steps == 0 and batch_idx > 0:
+                elapsed = time.time() - start_time
+                print(
+                    "| epoch {:3d} | {:4d}/{:4d} batches | ms/batch {:4.2f} | "
+                    "loss {:4.2f}".format(
+                        args.epoch,
+                        batch_idx,
+                        len(range(0, args.N, args.batch_size)),
+                        elapsed * 1000 / args.log_steps,
+                        train_loss / args.log_steps,
+                    )
                 )
-            )
 
-            start_time = time.time()
-            train_loss = 0.0
+                start_time = time.time()
+                train_loss = 0.0
+    else:
+        for batch_idx, start_idx in enumerate(range(0, args.N, args.batch_size)):
+            end_idx = min(start_idx + args.batch_size, args.N)
+            data = train_data[args.idxlist[start_idx:end_idx]]
+            data = naive_sparse2tensor(data).to(args.device)
+            optimizer.zero_grad()
+
+            if (
+                args.model.name.lower()[-3:] == "vae"
+                or args.model.name.lower() == "vasp"
+            ):
+                if args.model.total_anneal_steps > 0:
+                    anneal = min(
+                        args.model.anneal_cap,
+                        1.0 * args.update_count / args.model.total_anneal_steps,
+                    )
+                else:
+                    anneal = args.model.anneal_cap
+
+                optimizer.zero_grad()
+                recon_batch, mu, logvar = model(data)
+
+                loss = criterion(recon_batch, data, mu, logvar, anneal, args)
+            else:
+                recon_batch = model(data)
+                loss = criterion(recon_batch, data, args)
+
+            loss.backward()
+            train_loss += loss.item()
+            optimizer.step()
+            # scheduler.step(loss)
+            args.update_count += 1
+
+            if batch_idx % args.log_steps == 0 and batch_idx > 0:
+                elapsed = time.time() - start_time
+                print(
+                    "| epoch {:3d} | {:4d}/{:4d} batches | ms/batch {:4.2f} | "
+                    "loss {:4.2f}".format(
+                        args.epoch,
+                        batch_idx,
+                        len(range(0, args.N, args.batch_size)),
+                        elapsed * 1000 / args.log_steps,
+                        train_loss / args.log_steps,
+                    )
+                )
+
+                start_time = time.time()
+                train_loss = 0.0
 
 
 def evaluate(model, criterion, data_tr, data_te, args):
@@ -205,6 +294,7 @@ def evaluate(model, criterion, data_tr, data_te, args):
     e_N = data_tr.shape[0]
     total_val_loss_list = []
     n100_list = []
+    r10_list = []
     r20_list = []
     r50_list = []
 
@@ -241,20 +331,24 @@ def evaluate(model, criterion, data_tr, data_te, args):
             recon_batch[data.nonzero()] = -np.inf
 
             n100 = NDCG_binary_at_k_batch(recon_batch, heldout_data, 100)
+            r10 = Recall_at_k_batch(recon_batch, heldout_data, 10)
             r20 = Recall_at_k_batch(recon_batch, heldout_data, 20)
             r50 = Recall_at_k_batch(recon_batch, heldout_data, 50)
 
             n100_list.append(n100)
+            r10_list.append(r10)
             r20_list.append(r20)
             r50_list.append(r50)
 
     n100_list = np.concatenate(n100_list)
+    r10_list = np.concatenate(r10_list)
     r20_list = np.concatenate(r20_list)
     r50_list = np.concatenate(r50_list)
 
     return (
         np.nanmean(total_val_loss_list),
         np.nanmean(n100_list),
+        np.nanmean(r10_list),
         np.nanmean(r20_list),
         np.nanmean(r50_list),
     )
