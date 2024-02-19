@@ -14,7 +14,7 @@ num_workers: 4
 n_epochs: 100
 batch_size: 512
 patience: 30
-data_augmentation: False
+data_augmentation: True
 
 # select components
 defaults:
