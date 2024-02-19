@@ -146,6 +146,14 @@ def run(
     test_loss, n100, r10, r20, r50 = evaluate(
         model, criterion, test_data_tr, test_data_te, args
     )
+    wandb.log(
+        {
+            "test NDCG@100": n100,
+            "test recall@10": r10,
+            "test recall@20": r20,
+            "test recall@50": r50,
+        }
+    )
     print("=" * 105)
     print(
         "| End of training | test loss {:4.2f} | n100 {:4.2f} | r10 {:4.2f} | r20 {:4.2f} | "

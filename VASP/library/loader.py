@@ -3,6 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import pickle
+import math
 from scipy import sparse
 
 
@@ -25,16 +26,43 @@ def filter_triplets(tp, min_uc=5, min_sc=0):
     return tp, usercount, itemcount
 
 
-def split_train_test_proportion(
-    data, test_prop=0.2
-):  # todo change name. train_test는 이름이 구림.
-    try:
-        data_grouped_by_user = data.groupby("user")
-    except:
-        data_grouped_by_user = data.groupby("uid")
+def split_question_answer_proportion(data, proportion=0.2, type="valid"):
+    data = data.sort_values("time")
+    data_grouped_by_user = data.groupby("user")
     tr_list, te_list = list(), list()
 
-    np.random.seed(98765)
+    for _, group in data_grouped_by_user:
+        n_items_u = len(group)
+
+        if n_items_u >= 5:
+            answer_size = (
+                int(n_items_u * proportion)
+                if type == "valid"
+                else min(int(n_items_u * proportion), 10)
+            )
+            idx = np.zeros(n_items_u, dtype="bool")
+            idx[
+                np.random.choice(n_items_u, size=answer_size, replace=False).astype(
+                    "int64"
+                )
+            ] = True
+            idx[-1] = True
+
+            tr_list.append(group[np.logical_not(idx)])
+            te_list.append(group[idx])
+
+        else:
+            tr_list.append(group)
+
+    data_tr = pd.concat(tr_list)
+    data_te = pd.concat(te_list)
+
+    return data_tr, data_te
+
+
+def split_for_data_augmentation(data, test_prop=0.5):
+    data_grouped_by_user = data.groupby("uid")
+    tr_list, te_list = list(), list()
 
     for _, group in data_grouped_by_user:
         n_items_u = len(group)
@@ -118,11 +146,15 @@ class DataLoader:
         # Validation과 Test에는 input으로 사용될 tr 데이터와 정답을 확인하기 위한 te 데이터로 분리되었습니다.
         vad_plays = raw_data.loc[raw_data["user"].isin(vd_users)]
         vad_plays = vad_plays.loc[vad_plays["item"].isin(unique_sid)]
-        vad_plays_tr, vad_plays_te = split_train_test_proportion(vad_plays)
+        vad_plays_tr, vad_plays_te = split_question_answer_proportion(
+            vad_plays, type="valid"
+        )
 
         test_plays = raw_data.loc[raw_data["user"].isin(te_users)]
         test_plays = test_plays.loc[test_plays["item"].isin(unique_sid)]
-        test_plays_tr, test_plays_te = split_train_test_proportion(test_plays)
+        test_plays_tr, test_plays_te = split_question_answer_proportion(
+            test_plays, type="test"
+        )
 
         train_data = numerize(train_plays, profile2id, show2id)
         train_data.to_csv(os.path.join(pro_dir, "train.csv"), index=False)
@@ -180,7 +212,7 @@ class DataLoader:
         )
         self.args.N = data.shape[0]
         if self.args.data_augmentation:
-            data1, data2 = split_train_test_proportion(tp, 0.5)
+            data1, data2 = split_for_data_augmentation(tp, 0.5)
             rows, cols = data1["uid"], data1["sid"]
             data1 = sparse.csr_matrix(
                 (np.ones_like(rows), (rows, cols)),
