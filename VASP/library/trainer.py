@@ -76,6 +76,36 @@ def Recall_at_k_batch(X_pred, heldout_batch, k=100):
     recall = tmp / np.minimum(k, X_true_binary.sum(axis=1))
     return recall
 
+class EarlyStopping:
+    """주어진 patience 이후로 검증 세트의 손실이 개선되지 않으면 학습을 조기에 중단"""
+    def __init__(self, patience=7, verbose=False, delta=0):
+        """
+        Args:
+            patience (int): 손실이 개선된 후 기다리는 에폭 수
+            verbose (bool): 조기 중단 메시지 출력 여부
+            delta (float): 개선으로 간주되는 최소 변화량
+        """
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
+
+    def __call__(self, val_loss):
+        score = val_loss
+
+        if self.best_score is None:
+            self.best_score = score
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            print(f'EarlyStopping counter: {self.counter} out of {self.patience}')
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.counter = 0
 
 def get_model(args) -> nn.Module:
     try:
@@ -90,6 +120,7 @@ def get_model(args) -> nn.Module:
         raise e
     return model
 
+early_stopping = EarlyStopping(patience=5, verbose=True, delta=0.003)
 
 def run(
     args,
@@ -133,12 +164,22 @@ def run(
             )
         )
         print("-" * 105)
+        
+        # 얼리 스탑핑 호출
+        early_stopping(n100)
+        
+        # 지워도 되는 변수?
         n_iter = epoch * len(range(0, args.N, args.batch_size))
         # Save the model if the n100 is the best we've seen so far.
         if n100 > best_n100:
             with open(os.path.join(args.model_dir, args.model_file_name), "wb") as f:
                 torch.save(model, f)
             best_n100 = n100
+        
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break
+        
     # Load the best saved model.
     with open(os.path.join(args.model_dir, args.model_file_name), "rb") as f:
         model = torch.load(f)
