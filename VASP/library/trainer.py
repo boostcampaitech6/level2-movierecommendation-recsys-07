@@ -116,14 +116,23 @@ def run(
         val_loss, n100, r10, r20, r50 = evaluate(
             model, criterion, vad_data_tr, vad_data_te, args
         )
-        print("-" * 89)
+        wandb.log(
+            {
+                "epoch": epoch,
+                "NDCG@100": n100,
+                "recall@10": r10,
+                "recall@20": r20,
+                "recall@50": r50,
+            }
+        )
+        print("-" * 105)
         print(
             "| end of epoch {:3d} | time: {:4.2f}s | valid loss {:4.2f} | "
             "n100 {:5.3f} | r10 {:5.3f} | r20 {:5.3f} | r50 {:5.3f}".format(
                 epoch, time.time() - epoch_start_time, val_loss, n100, r10, r20, r50
             )
         )
-        print("-" * 89)
+        print("-" * 105)
         n_iter = epoch * len(range(0, args.N, args.batch_size))
         # Save the model if the n100 is the best we've seen so far.
         if n100 > best_n100:
@@ -137,12 +146,12 @@ def run(
     test_loss, n100, r10, r20, r50 = evaluate(
         model, criterion, test_data_tr, test_data_te, args
     )
-    print("=" * 89)
+    print("=" * 105)
     print(
         "| End of training | test loss {:4.2f} | n100 {:4.2f} | r10 {:4.2f} | r20 {:4.2f} | "
         "r50 {:4.2f}".format(test_loss, n100, r10, r20, r50)
     )
-    print("=" * 89)
+    print("=" * 105)
 
 
 def train(model, criterion, optimizer, train_data, args):
