@@ -1,6 +1,6 @@
 import torch
 import torch.nn.functional as F
-
+from torchvision.ops import sigmoid_focal_loss
 
 def get_criterion(args):
     try:
@@ -9,6 +9,7 @@ def get_criterion(args):
             "original_ease": original_ease,
             "loss_function_vae": loss_function_vae,
             "loss_function_dae": loss_function_dae,
+            "focal_loss": focal_loss
         }.get(loss_function_name)
     except:
         raise NotImplementedError(
@@ -102,3 +103,10 @@ def loss_function_vae(recon_x, x, mu, logvar, anneal, args):
 def loss_function_dae(recon_x, x, args):
     BCE = -torch.mean(torch.sum(F.log_softmax(recon_x, 1) * x, -1))
     return BCE
+
+
+
+def focal_loss(recon_x, x, args):
+    # Focal Loss 계산
+    loss = sigmoid_focal_loss(recon_x, x, reduction="none", alpha=args.loss_function.alpha, gamma=args.loss_function.gamma)
+    return loss

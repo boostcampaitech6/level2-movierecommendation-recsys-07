@@ -1,0 +1,3 @@
+name: focal_loss
+alpha: 2.5
+gamma: 2.0
