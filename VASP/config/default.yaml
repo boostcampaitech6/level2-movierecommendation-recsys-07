@@ -11,16 +11,16 @@ asset_dir: "assets/"
 # train configuration
 log_steps: 100
 num_workers: 4
-n_epochs: 100
+n_epochs: 10000
 batch_size: 512
 patience: 30
-data_augmentation: True
+data_augmentation: False
 
 # select components
 defaults:
   - _self_
   - dataloader: nease
-  - model: vasp
-  - loss_function: vae
+  - model: nease
+  - loss_function: original_ease
   - optimizer: adamw
   - scheduler: plateau

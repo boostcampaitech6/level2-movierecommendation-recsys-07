@@ -1,31 +1,18 @@
 program: train.py
-project: movie_rec_vasp_sweep
-method: grid
+project: movie_rec_vasp_nease_sweep
+method: bayes
 metric:
   goal: maximize
   name: test recall@10
 parameters:
   optimizer.lr:
-    values:
-    - 2.0e-3
-    - 1.0e-3
-    - 5.0e-4
-  model.dropout:
-    values:
-    - 0.5
-    - 0.4
-    - 0.3
-    - 0.2
-    - 0.1
-  model.p_dims:
-    values:
-    - [512, 1024, 2048, 4096]
-    - [256, 512, 1024, 2048, 4096]
-    - [128, 256, 512, 1024, 2048, 4096]
-    - [128, 256, 512, 1024, 2048, 4096]
-    - [256, 256, 512, 1024, 2048, 4096]
-    - [512, 512, 512, 1024, 2048, 4096]
-    - [1024, 1024, 1024, 1024, 2048, 4096]
+    distribution: uniform
+    min: 1.0e-4
+    max: 1.0e-2
+  loss_function.lambd:
+    distribution: int_uniform
+    min: 0
+    max: 1000
 command:
   - ${env}
   - python
