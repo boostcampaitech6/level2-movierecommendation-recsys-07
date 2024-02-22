@@ -12,3 +12,4 @@ gensim
 scikit-learn
 wandb
 hydra-core
+torchvision

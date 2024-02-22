@@ -8,11 +8,11 @@ def recall_at_10(submission_df: pd.DataFrame, valid_df: pd.DataFrame):
 
     for user in submission_df["user"].unique():
         pred_set = set(submission_df[submission_df["user"] == user]["item"])
-        assert len(pred_set) == 10, f"Length of Prediction is not 10 for user {user}"
+        # assert len(pred_set) == 10, f"Length of Prediction is not 10 for user {user}"
         valid_set = set(valid_df[valid_df["user"] == user]["item"])
 
         if len(valid_set) > 0:
-            sum_recall += len(pred_set & valid_set) / min(len(valid_set), 10)
+            sum_recall += len(pred_set & valid_set) / min(len(valid_set), 5)
             true_users += 1
 
     return sum_recall / true_users

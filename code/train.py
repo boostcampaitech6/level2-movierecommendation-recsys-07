@@ -76,11 +76,11 @@ def main(args: DictConfig):
     logger.info("Building Model ...")
     model = get_model(args).to(args.device)
 
-    logger.info("Start Training ...")
-    run(args, model, train_loader, seen, valid_df)
-
     logger.info("Saving configuration")
     OmegaConf.save(config=args, f=os.path.join(args.model_dir, "default.yaml"))
+
+    logger.info("Start Training ...")
+    run(args, model, train_loader, seen, valid_df)
 
 
 if __name__ == "__main__":

@@ -21,7 +21,7 @@ class MF(nn.Module):
         try:  # visualizae를 위해 embedding을 꺼낼 때 args.n_rows가 없음.
             self.mu = args.n_rows / (args.n_rows + args.n_users * args.dataloader.n_neg)
         except:
-            pass
+            self.mu = 0.022766
         self.b_u = nn.Parameter(torch.zeros(self.user_dims))
         self.b_i = nn.Parameter(torch.zeros(self.item_dims))
 
@@ -177,6 +177,20 @@ class LFM(FM):
         return torch.exp(logit) / (1 + torch.exp(logit))
 
 
+class Block(nn.Module):
+    def __init__(self, channel_in, channel_out, kernel_size, stride):
+        super().__init__()
+
+        self.seq2 = nn.Sequential(
+            nn.Conv2d(channel_in, channel_out, kernel_size=kernel_size, stride=stride),
+            nn.BatchNorm2d(channel_out),
+            nn.Tanh(),
+        )
+
+    def forward(self, x):
+        return self.seq2(x)
+
+
 class CFM(FM):
     def __init__(self, args):
         super().__init__(args)
@@ -194,12 +208,13 @@ class CFM(FM):
 
         # channel = Combination(n_feat+2, 2)
         channel = (len(self.feat_dim) + 2) * (len(self.feat_dim) + 1) // 2
+
         channel_list = [channel] + args.model.channel_list
         kernel_size = args.model.kernel_size
         stride = args.model.stride
 
         modules = [
-            nn.Conv2d(
+            Block(
                 channel_list[i],
                 channel_list[i + 1],
                 kernel_size=kernel_size,
@@ -213,6 +228,8 @@ class CFM(FM):
         dim_ = args.model.hidden_dim
         for _ in range(len(modules)):
             dim_ = int((dim_ - kernel_size) / stride + 1)
+        del modules
+
         self.fc = nn.Linear(channel_ * dim_ * dim_, 1)
 
         self.apply(self.init_weights)
@@ -222,8 +239,11 @@ class CFM(FM):
             torch.nn.init.xavier_normal_(module.weight)
         elif isinstance(module, nn.Linear):
             torch.nn.init.xavier_normal_(module.weight)
-        elif isinstance(module, nn.Conv3d):
+            if module.bias is not None:
+                module.bias.data.zero_()
+        elif isinstance(module, nn.Conv2d):
             torch.nn.init.xavier_normal_(module.weight)
+            module.bias.data.zero_()
 
     def forward(self, x):
         # user와 item은 이진수 표현이 아님.

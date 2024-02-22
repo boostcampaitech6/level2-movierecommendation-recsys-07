@@ -1,4 +1,5 @@
 import torch
+import torchvision
 
 
 def get_criterion(pred: torch.Tensor, target: torch.Tensor, args):
@@ -10,6 +11,9 @@ def get_criterion(pred: torch.Tensor, target: torch.Tensor, args):
         loss = roc_star_paper(pred, target, args)
     elif args.loss_function.name.lower() == "bpr":
         loss = BPR(pred, target, args)
+    elif args.loss_function.name.lower() == "focal":
+        loss = torchvision.ops.sigmoid_focal_loss(pred, target)
+        loss = torch.mean(loss)
     else:
         raise NotImplementedError(
             f"loss function {args.loss_function} is not implemented"
@@ -41,8 +45,9 @@ def roc_star_paper(y_pred: torch.Tensor, _y_true: torch.Tensor, args):
 
     pos_expand = pos.view(-1, 1).expand(-1, ln_neg).reshape(-1)
     neg_expand = neg.repeat(ln_pos)
+    neg_expand += args.loss_function.gamma
 
-    diff = -(pos_expand - neg_expand - args.loss_function.gamma)
+    diff = -(pos_expand - neg_expand)
     diff = diff[diff > 0]
 
     loss = torch.sum(diff * diff)
