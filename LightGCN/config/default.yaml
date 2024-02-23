@@ -1,21 +1,26 @@
 # General settings
-seed: 42
-use_cuda_if_available: False
+seed: 373377
+use_cuda_if_available: True
 
+# Data preprocessing optiong
+data_prep: "user" # user, regacy
 
 # Directory paths
 data_dir: "../data/train/"
 output_dir: "./outputs/"
 
 # Model configuration
-hidden_dim: 64
-n_layers: 3
+hidden_dim: 128
+n_layers: 2
 alpha: null
 
+# Loss Function
+lambda_reg: 0.5
+
 # Training parameters
-n_epochs: 150
+n_epochs: 300
 lr: 0.1
 
 # Model saving options
 model_dir: "./models/"
-model_name: "best_model.pt"
+model_name: "best_recall_model.pt"
