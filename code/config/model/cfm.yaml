@@ -1,0 +1,6 @@
+name: cfm
+hidden_dim: 32
+attention_dim: 16
+kernel_size: 3
+stride: 1
+channel_list: [8,4,2]
